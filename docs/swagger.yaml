@@ -1,0 +1,176 @@
+basePath: /
+definitions:
+  apierror.APIError:
+    properties:
+      code:
+        example: DTE-001
+        type: string
+      detail:
+        example: The image field is required
+        type: string
+      instance:
+        example: /api/v1/events
+        type: string
+      status:
+        example: 400
+        type: integer
+      title:
+        example: Bad Request
+        type: string
+      type:
+        example: about:blank
+        type: string
+    type: object
+  domain.Device:
+    properties:
+      createdAt:
+        type: string
+      deviceId:
+        type: string
+      name:
+        type: string
+    type: object
+  domain.DeviceResponse:
+    properties:
+      data:
+        $ref: '#/definitions/domain.Device'
+    type: object
+  domain.Event:
+    properties:
+      deviceId:
+        type: string
+      eventType:
+        type: string
+      id:
+        type: string
+      imageUrl:
+        type: string
+      intruder:
+        type: boolean
+      timestamp:
+        type: string
+    type: object
+  domain.EventsResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/domain.Event'
+        type: array
+    type: object
+  domain.LinkDeviceRequest:
+    properties:
+      deviceId:
+        type: string
+      name:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: IoT gateway for the Secure Home project — routes microcontroller events
+    to the detection service.
+  title: Secure Home Gateway API
+  version: "1.0"
+paths:
+  /api/v1/me/device:
+    delete:
+      description: Removes the linked device from the authenticated user
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+      security:
+      - BearerAuth: []
+      summary: Unlink device from authenticated user
+      tags:
+      - users
+    get:
+      description: Returns the authenticated user's linked device
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.DeviceResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+      security:
+      - BearerAuth: []
+      summary: Get my linked device
+      tags:
+      - users
+    post:
+      consumes:
+      - application/json
+      description: Associates a device with the authenticated user
+      parameters:
+      - description: Device payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/domain.LinkDeviceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.DeviceResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+      security:
+      - BearerAuth: []
+      summary: Link device to authenticated user
+      tags:
+      - users
+  /api/v1/me/device/events:
+    get:
+      description: Returns all events associated with the authenticated user's linked
+        device
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.EventsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+      security:
+      - BearerAuth: []
+      summary: Get authenticated user's device events
+      tags:
+      - users
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
