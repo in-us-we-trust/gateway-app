@@ -58,4 +58,4 @@ jobs:
             --max-instances 1 \
             --concurrency 20 \
             --cpu-throttling \
-            --set-env-vars DETECTOR_SERVICE_URL=${{ secrets.DETECTOR_SERVICE_URL }}
+            --set-env-vars DETECTOR_SERVICE_URL=${{ secrets.DETECTOR_SERVICE_URL }},USER_SERVICE_URL=${{ secrets.USER_SERVICE_URL }}
