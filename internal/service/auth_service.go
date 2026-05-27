@@ -38,3 +38,13 @@ func (s *AuthService) Register(
 		LastName:  req.LastName,
 	})
 }
+
+func (s *AuthService) Login(
+	ctx context.Context,
+	req domain.LoginRequest,
+) (*domain.LoginResponse, error) {
+	return s.authClient.Login(ctx, domain.AuthLoginRequest{
+		Email:    req.Email,
+		Password: req.Password,
+	})
+}

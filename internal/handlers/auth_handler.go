@@ -49,3 +49,35 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, resp)
 }
+
+// Login godoc
+// @Summary Login user
+// @Description Authenticates user credentials and returns auth tokens
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body domain.LoginRequest true "Login payload"
+// @Success 200 {object} domain.LoginResponse
+// @Failure 400 {object} apierror.APIError
+// @Failure 500 {object} apierror.APIError
+// @Router /api/v1/login [post]
+func (h *AuthHandler) Login(c *gin.Context) {
+	var req domain.LoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		apierror.Respond(c, apierror.BadRequest(err.Error(), c.Request.URL.Path))
+		return
+	}
+
+	resp, err := h.service.Login(c.Request.Context(), req)
+	if err != nil {
+		var detErr *domain.DetectorError
+		if errors.As(err, &detErr) {
+			apierror.Respond(c, apierror.FromDetectorError(detErr.DetectorDetail, c.Request.URL.Path, detErr.Code, detErr.StatusCode))
+			return
+		}
+		apierror.Respond(c, apierror.InternalServerError("failed to login", c.Request.URL.Path))
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}

@@ -73,6 +73,7 @@ func main() {
 
 	api := router.Group("/api/v1")
 	api.POST("/register", authHandler.Register)
+	api.POST("/login", authHandler.Login)
 
 	protected := api.Group("")
 	protected.Use(middleware.JWTAuth())

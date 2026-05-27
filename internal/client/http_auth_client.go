@@ -59,3 +59,44 @@ func (c *HTTPAuthClient) Register(
 
 	return nil
 }
+
+func (c *HTTPAuthClient) Login(
+	ctx context.Context,
+	req domain.AuthLoginRequest,
+) (*domain.LoginResponse, error) {
+	body, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+
+	url := fmt.Sprintf("%s/auth/login", c.baseURL)
+
+	httpReq, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		url,
+		bytes.NewBuffer(body),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.client.Do(httpReq)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, handleAPIError(resp)
+	}
+
+	data, err := decodeResponse[domain.LoginData](resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return &domain.LoginResponse{Data: *data}, nil
+}

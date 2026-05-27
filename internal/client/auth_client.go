@@ -10,4 +10,9 @@ type AuthClient interface {
 		ctx context.Context,
 		req domain.AuthRegisterRequest,
 	) error
+
+	Login(
+		ctx context.Context,
+		req domain.AuthLoginRequest,
+	) (*domain.LoginResponse, error)
 }

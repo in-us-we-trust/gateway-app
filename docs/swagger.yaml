@@ -64,6 +64,25 @@ definitions:
       name:
         type: string
     type: object
+  domain.LoginData:
+    properties:
+      accessToken:
+        type: string
+      refreshToken:
+        type: string
+    type: object
+  domain.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  domain.LoginResponse:
+    properties:
+      data:
+        $ref: '#/definitions/domain.LoginData'
+    type: object
   domain.RegisterRequest:
     properties:
       email:
@@ -129,6 +148,36 @@ paths:
           schema:
             $ref: '#/definitions/apierror.APIError'
       summary: Register a new user
+      tags:
+      - auth
+  /api/v1/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates user credentials and returns auth tokens
+      parameters:
+      - description: Login payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/domain.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+      summary: Login user
       tags:
       - auth
   /api/v1/me/device:
