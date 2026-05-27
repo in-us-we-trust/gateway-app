@@ -1,4 +1,4 @@
-package handler
+package handlers
 
 import (
 	"errors"
@@ -12,12 +12,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type UserHandler struct {
-	service service.UserService
+type DeviceHandler struct {
+	service service.DeviceService
 }
 
-func NewUserHandler(svc service.UserService) *UserHandler {
-	return &UserHandler{service: svc}
+func NewDeviceHandler(svc service.DeviceService) *DeviceHandler {
+	return &DeviceHandler{service: svc}
 }
 
 // LinkMyDevice godoc
@@ -32,7 +32,7 @@ func NewUserHandler(svc service.UserService) *UserHandler {
 // // @Failure 401 {object} apierror.APIError
 // @Failure 404 {object} apierror.APIError
 // @Router /api/v1/me/device [post]
-func (h *UserHandler) LinkMyDevice(c *gin.Context) {
+func (h *DeviceHandler) LinkMyDevice(c *gin.Context) {
 	var req domain.LinkDeviceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		apierror.Respond(c, apierror.BadRequest(err.Error(), c.Request.URL.Path))
@@ -68,7 +68,7 @@ func (h *UserHandler) LinkMyDevice(c *gin.Context) {
 // @Failure 401 {object} apierror.APIError
 // @Failure 404 {object} apierror.APIError
 // @Router /api/v1/me/device [delete]
-func (h *UserHandler) UnlinkMyDevice(c *gin.Context) {
+func (h *DeviceHandler) UnlinkMyDevice(c *gin.Context) {
 	claims, ok := requestctx.Claims(c.Request.Context())
 	if !ok {
 		h.handleJWTNotPresentError(c)
@@ -99,7 +99,7 @@ func (h *UserHandler) UnlinkMyDevice(c *gin.Context) {
 // @Failure 401 {object} apierror.APIError
 // @Failure 404 {object} apierror.APIError
 // @Router /api/v1/me/device [get]
-func (h *UserHandler) GetMyDevice(c *gin.Context) {
+func (h *DeviceHandler) GetMyDevice(c *gin.Context) {
 	claims, ok := requestctx.Claims(c.Request.Context())
 	if !ok {
 		h.handleJWTNotPresentError(c)
@@ -131,7 +131,7 @@ func (h *UserHandler) GetMyDevice(c *gin.Context) {
 // @Failure 404 {object} apierror.APIError
 // @Failure 500 {object} apierror.APIError
 // @Router /api/v1/me/device/events [get]
-func (h *UserHandler) GetMyDeviceEvents(c *gin.Context) {
+func (h *DeviceHandler) GetMyDeviceEvents(c *gin.Context) {
 	claims, ok := requestctx.Claims(c.Request.Context())
 	if !ok {
 		h.handleJWTNotPresentError(c)
@@ -152,7 +152,7 @@ func (h *UserHandler) GetMyDeviceEvents(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
-func (h *UserHandler) handleJWTNotPresentError(
+func (h *DeviceHandler) handleJWTNotPresentError(
 	c *gin.Context,
 ) {
 	apierror.Respond(

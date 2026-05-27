@@ -64,6 +64,35 @@ definitions:
       name:
         type: string
     type: object
+  domain.RegisterRequest:
+    properties:
+      email:
+        type: string
+      firstName:
+        type: string
+      lastName:
+        type: string
+      password:
+        type: string
+    type: object
+  domain.User:
+    properties:
+      createdAt:
+        type: string
+      email:
+        type: string
+      firstName:
+        type: string
+      id:
+        type: string
+      lastName:
+        type: string
+    type: object
+  domain.UserResponse:
+    properties:
+      data:
+        $ref: '#/definitions/domain.User'
+    type: object
 host: localhost:8080
 info:
   contact: {}
@@ -72,6 +101,36 @@ info:
   title: Secure Home Gateway API
   version: "1.0"
 paths:
+  /api/v1/auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Creates auth credentials and user profile
+      parameters:
+      - description: Register payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/domain.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.UserResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+      summary: Register a new user
+      tags:
+      - auth
   /api/v1/me/device:
     delete:
       description: Removes the linked device from the authenticated user

@@ -151,6 +151,53 @@ func (c *HTTPUserClient) UnlinkDevice(
 	return nil
 }
 
+func (c *HTTPUserClient) CreateUser(
+	ctx context.Context,
+	reqPayload domain.CreateUserRequest,
+) (*domain.UserResponse, error) {
+	body, err := json.Marshal(reqPayload)
+	if err != nil {
+		return nil, err
+	}
+
+	url := fmt.Sprintf(
+		"%s/users",
+		c.baseURL,
+	)
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		url,
+		bytes.NewBuffer(body),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set(
+		"Content-Type",
+		"application/json",
+	)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+		return nil, handleAPIError(resp)
+	}
+
+	user, err := decodeResponse[domain.User](resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return &domain.UserResponse{Data: *user}, nil
+}
+
 func handleAPIError(
 	resp *http.Response,
 ) error {

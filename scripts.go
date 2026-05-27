@@ -8,7 +8,7 @@ import (
 	"os/exec"
 )
 
-var swaggerArgs = []string{"swag", "init", "-g", "cmd/api/main.go", "-o", "docs"}
+var swaggerArgs = []string{"go", "run", "github.com/swaggo/swag/cmd/swag@latest", "init", "-g", "cmd/api/main.go", "-o", "docs"}
 
 var commands = map[string][]string{
 	"run":          {"go", "run", "./cmd/api"},
@@ -48,6 +48,7 @@ func runCmd(args []string) {
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
 	if err := cmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "command failed: %v (%v)\n", args, err)
 		os.Exit(1)
 	}
 }

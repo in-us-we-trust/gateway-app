@@ -4,7 +4,7 @@ import (
 	_ "gateway-app/docs"
 	"gateway-app/internal/client"
 	"gateway-app/internal/config"
-	"gateway-app/internal/handler"
+	"gateway-app/internal/handlers"
 	"gateway-app/internal/middleware"
 	"gateway-app/internal/service"
 	"log"
@@ -33,12 +33,22 @@ func main() {
 		cfg.UserServiceURL,
 	)
 
-	userService := service.NewUserService(
+	authClient := client.NewHTTPAuthClient(
+		cfg.AuthServiceURL,
+	)
+
+	deviceService := service.NewDeviceService(
 		userClient,
 		detectorClient,
 	)
 
-	userHandler := handler.NewUserHandler(userService)
+	authService := service.NewAuthService(
+		userClient,
+		authClient,
+	)
+
+	deviceHandler := handlers.NewDeviceHandler(deviceService)
+	authHandler := handlers.NewAuthHandler(authService)
 
 	router := gin.Default()
 
@@ -62,14 +72,16 @@ func main() {
 	})
 
 	api := router.Group("/api/v1")
+	api.POST("/register", authHandler.Register)
 
-	api.Use(middleware.JWTAuth())
+	protected := api.Group("")
+	protected.Use(middleware.JWTAuth())
 
 	{
-		api.GET("/me/device", userHandler.GetMyDevice)
-		api.POST("/me/device", userHandler.LinkMyDevice)
-		api.DELETE("/me/device", userHandler.UnlinkMyDevice)
-		api.GET("/me/device/events", userHandler.GetMyDeviceEvents)
+		protected.GET("/me/device", deviceHandler.GetMyDevice)
+		protected.POST("/me/device", deviceHandler.LinkMyDevice)
+		protected.DELETE("/me/device", deviceHandler.UnlinkMyDevice)
+		protected.GET("/me/device/events", deviceHandler.GetMyDeviceEvents)
 	}
 
 	log.Printf("starting server on :%s", cfg.Port)

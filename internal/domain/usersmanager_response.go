@@ -7,3 +7,7 @@ type DeviceResponse struct {
 type EventsResponse struct {
 	Data []Event `json:"data"`
 }
+
+type UserResponse struct {
+	Data User `json:"data"`
+}

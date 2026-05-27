@@ -6,22 +6,22 @@ import (
 	"gateway-app/internal/domain"
 )
 
-type UserService struct {
+type DeviceService struct {
 	userClient      client.UserClient
 	detectiveClient client.DetectorClient
 }
 
-func NewUserService(
+func NewDeviceService(
 	userClient client.UserClient,
 	detectiveClient client.DetectorClient,
-) UserService {
-	return UserService{
+) DeviceService {
+	return DeviceService{
 		userClient:      userClient,
 		detectiveClient: detectiveClient,
 	}
 }
 
-func (s *UserService) GetMyDevice(
+func (s *DeviceService) GetMyDevice(
 	ctx context.Context,
 	userID string,
 ) (*domain.Device, error) {
@@ -32,7 +32,7 @@ func (s *UserService) GetMyDevice(
 	)
 }
 
-func (s *UserService) LinkDevice(
+func (s *DeviceService) LinkDevice(
 	ctx context.Context,
 	userID string,
 	req domain.LinkDeviceRequest,
@@ -45,7 +45,7 @@ func (s *UserService) LinkDevice(
 	)
 }
 
-func (s *UserService) UnlinkDevice(
+func (s *DeviceService) UnlinkDevice(
 	ctx context.Context,
 	userID string,
 ) error {
@@ -56,7 +56,7 @@ func (s *UserService) UnlinkDevice(
 	)
 }
 
-func (s *UserService) GetMyDeviceEvents(
+func (s *DeviceService) GetMyDeviceEvents(
 	ctx context.Context,
 	userID string,
 ) (*[]domain.Event, error) {

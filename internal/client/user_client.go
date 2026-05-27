@@ -21,4 +21,8 @@ type UserClient interface {
 		ctx context.Context,
 		userID string,
 	) error
+	CreateUser(
+		ctx context.Context,
+		req domain.CreateUserRequest,
+	) (*domain.UserResponse, error)
 }
