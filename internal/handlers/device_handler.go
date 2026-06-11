@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"net/http"
+	"strconv"
 
 	"gateway-app/internal/domain"
 	"gateway-app/internal/requestctx"
@@ -162,4 +163,78 @@ func (h *DeviceHandler) handleJWTNotPresentError(
 			c.Request.URL.Path,
 		),
 	)
+}
+
+// RegisterPushToken godoc
+// @Summary Register push notification token
+// @Description Registers or updates the FCM push token for the authenticated user's device
+// @Tags users
+// @Accept json
+// @Security BearerAuth
+// @Param request body domain.RegisterPushTokenRequest true "Push token payload"
+// @Success 200
+// @Failure 400 {object} apierror.APIError
+// @Failure 401 {object} apierror.APIError
+// @Router /api/v1/me/push-token [post]
+func (h *DeviceHandler) RegisterPushToken(c *gin.Context) {
+	var req domain.RegisterPushTokenRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		apierror.Respond(c, apierror.BadRequest(err.Error(), c.Request.URL.Path))
+		return
+	}
+
+	claims, ok := requestctx.Claims(c.Request.Context())
+	if !ok {
+		h.handleJWTNotPresentError(c)
+		return
+	}
+
+	resp, err := h.service.RegisterPushToken(c.Request.Context(), claims.User.Id, req)
+	if err != nil {
+		var detErr *domain.DetectorError
+		if errors.As(err, &detErr) {
+			apierror.Respond(c, apierror.FromDetectorError(detErr.DetectorDetail, c.Request.URL.Path, detErr.Code, detErr.StatusCode))
+			return
+		}
+		apierror.Respond(c, apierror.InternalServerError("failed to register push token", c.Request.URL.Path))
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+// DeletePushToken godoc
+// @Summary Delete push notification token
+// @Description Removes the push token from an app device without deleting the device
+// @Tags users
+// @Security BearerAuth
+// @Param appDeviceId path int true "App Device ID"
+// @Success 204
+// @Failure 401 {object} apierror.APIError
+// @Failure 403 {object} apierror.APIError
+// @Router /api/v1/me/push-token/{appDeviceId} [delete]
+func (h *DeviceHandler) DeletePushToken(c *gin.Context) {
+	claims, ok := requestctx.Claims(c.Request.Context())
+	if !ok {
+		h.handleJWTNotPresentError(c)
+		return
+	}
+
+	appDeviceID, err := strconv.ParseInt(c.Param("appDeviceId"), 10, 64)
+	if err != nil {
+		apierror.Respond(c, apierror.BadRequest("invalid appDeviceId", c.Request.URL.Path))
+		return
+	}
+
+	if err := h.service.DeletePushToken(c.Request.Context(), claims.User.Id, appDeviceID); err != nil {
+		var detErr *domain.DetectorError
+		if errors.As(err, &detErr) {
+			apierror.Respond(c, apierror.FromDetectorError(detErr.DetectorDetail, c.Request.URL.Path, detErr.Code, detErr.StatusCode))
+			return
+		}
+		apierror.Respond(c, apierror.InternalServerError("failed to delete push token", c.Request.URL.Path))
+		return
+	}
+
+	c.Status(http.StatusNoContent)
 }

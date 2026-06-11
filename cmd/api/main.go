@@ -83,6 +83,8 @@ func main() {
 		protected.POST("/me/device", deviceHandler.LinkMyDevice)
 		protected.DELETE("/me/device", deviceHandler.UnlinkMyDevice)
 		protected.GET("/me/device/events", deviceHandler.GetMyDeviceEvents)
+		protected.POST("/me/push-token", deviceHandler.RegisterPushToken)
+		protected.DELETE("/me/push-token/:appDeviceId", deviceHandler.DeletePushToken)
 	}
 
 	log.Printf("starting server on :%s", cfg.Port)

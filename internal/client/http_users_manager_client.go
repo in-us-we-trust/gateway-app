@@ -238,6 +238,66 @@ func (c *HTTPUserClient) GetUserByEmail(
 	return decodeResponse[domain.UserDetail](resp)
 }
 
+func (c *HTTPUserClient) RegisterPushToken(
+	ctx context.Context,
+	userID string,
+	payload domain.RegisterPushTokenRequest,
+) (*domain.AppDeviceResponse, error) {
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	url := fmt.Sprintf("%s/users/%s/app-devices", c.baseURL, userID)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, handleAPIError(resp)
+	}
+
+	var result domain.AppDeviceResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+func (c *HTTPUserClient) DeletePushToken(
+	ctx context.Context,
+	userID string,
+	appDeviceID int64,
+) error {
+	url := fmt.Sprintf("%s/users/%s/app-devices/%d/push-token", c.baseURL, userID, appDeviceID)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNoContent {
+		return handleAPIError(resp)
+	}
+
+	return nil
+}
+
 func handleAPIError(
 	resp *http.Response,
 ) error {

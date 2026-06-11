@@ -252,6 +252,91 @@
                     }
                 }
             }
+        },
+        "/api/v1/me/push-token": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Registers or updates the FCM push token for the authenticated user's device",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Register push notification token",
+                "parameters": [
+                    {
+                        "description": "Push token payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.RegisterPushTokenRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apierror.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apierror.APIError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/me/push-token/{appDeviceId}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Removes the push token from an app device without deleting the device",
+                "tags": [
+                    "users"
+                ],
+                "summary": "Delete push notification token",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "App Device ID",
+                        "name": "appDeviceId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apierror.APIError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/apierror.APIError"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -378,6 +463,20 @@
             "properties": {
                 "data": {
                     "$ref": "#/definitions/domain.LoginData"
+                }
+            }
+        },
+        "domain.RegisterPushTokenRequest": {
+            "type": "object",
+            "properties": {
+                "deviceName": {
+                    "type": "string"
+                },
+                "platform": {
+                    "type": "string"
+                },
+                "pushToken": {
+                    "type": "string"
                 }
             }
         },

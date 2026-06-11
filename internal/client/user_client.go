@@ -30,4 +30,14 @@ type UserClient interface {
 		ctx context.Context,
 		email string,
 	) (*domain.UserDetail, error)
+	RegisterPushToken(
+		ctx context.Context,
+		userID string,
+		req domain.RegisterPushTokenRequest,
+	) (*domain.AppDeviceResponse, error)
+	DeletePushToken(
+		ctx context.Context,
+		userID string,
+		appDeviceID int64,
+	) error
 }

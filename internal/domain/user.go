@@ -39,3 +39,17 @@ type UserDetail struct {
 	UpdatedAt  string      `json:"updatedAt"`
 	AppDevices []AppDevice `json:"appDevices"`
 }
+
+type RegisterPushTokenRequest struct {
+	DeviceName string `json:"deviceName"`
+	Platform   string `json:"platform"`
+	PushToken  string `json:"pushToken"`
+}
+
+type AppDeviceResponse struct {
+	ID         int64  `json:"id"`
+	UserID     string `json:"userId"`
+	DeviceName string `json:"deviceName"`
+	Platform   string `json:"platform"`
+	Enabled    bool   `json:"enabled"`
+}

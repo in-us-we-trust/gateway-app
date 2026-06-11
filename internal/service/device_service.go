@@ -67,3 +67,18 @@ func (s *DeviceService) GetMyDeviceEvents(
 
 	return s.detectiveClient.GetDeviceEvents(ctx, device.DeviceID)
 }
+
+func (s *DeviceService) RegisterPushToken(
+	ctx context.Context,
+	userID string,
+	req domain.RegisterPushTokenRequest,
+) (*domain.AppDeviceResponse, error) {
+	return s.userClient.RegisterPushToken(ctx, userID, req)
+}
+func (s *DeviceService) DeletePushToken(
+	ctx context.Context,
+	userID string,
+	appDeviceID int64,
+) error {
+	return s.userClient.DeletePushToken(ctx, userID, appDeviceID)
+}

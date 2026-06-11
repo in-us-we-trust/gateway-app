@@ -83,6 +83,15 @@ definitions:
       data:
         $ref: '#/definitions/domain.LoginData'
     type: object
+  domain.RegisterPushTokenRequest:
+    properties:
+      deviceName:
+        type: string
+      platform:
+        type: string
+      pushToken:
+        type: string
+    type: object
   domain.RegisterRequest:
     properties:
       email:
@@ -274,6 +283,61 @@ paths:
       security:
       - BearerAuth: []
       summary: Get authenticated user's device events
+      tags:
+      - users
+  /api/v1/me/push-token:
+    post:
+      consumes:
+      - application/json
+      description: Registers or updates the FCM push token for the authenticated user's
+        device
+      parameters:
+      - description: Push token payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/domain.RegisterPushTokenRequest'
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+      security:
+      - BearerAuth: []
+      summary: Register push notification token
+      tags:
+      - users
+  /api/v1/me/push-token/{appDeviceId}:
+    delete:
+      description: Removes the push token from an app device without deleting the
+        device
+      parameters:
+      - description: App Device ID
+        in: path
+        name: appDeviceId
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+      security:
+      - BearerAuth: []
+      summary: Delete push notification token
       tags:
       - users
 securityDefinitions:
