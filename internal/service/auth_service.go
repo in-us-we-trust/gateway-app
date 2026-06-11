@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"gateway-app/internal/client"
 	"gateway-app/internal/domain"
 )
@@ -43,8 +44,17 @@ func (s *AuthService) Login(
 	ctx context.Context,
 	req domain.LoginRequest,
 ) (*domain.LoginResponse, error) {
+	user, err := s.userClient.GetUserByEmail(ctx, req.Email)
+	if err != nil {
+		return nil, err
+	}
+	userBytes, err := json.Marshal(user)
+	if err != nil {
+		return nil, err
+	}
 	return s.authClient.Login(ctx, domain.AuthLoginRequest{
 		Email:    req.Email,
 		Password: req.Password,
+		User:     userBytes,
 	})
 }

@@ -25,4 +25,9 @@ type UserClient interface {
 		ctx context.Context,
 		req domain.CreateUserRequest,
 	) (*domain.UserResponse, error)
+
+	GetUserByEmail(
+		ctx context.Context,
+		email string,
+	) (*domain.UserDetail, error)
 }

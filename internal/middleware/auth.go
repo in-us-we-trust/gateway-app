@@ -94,15 +94,7 @@ func extractClaimsFromJWT(
 		return nil, errInvalidJWT
 	}
 
-	claims.UserID = strings.TrimSpace(
-		claims.UserID,
-	)
-
-	claims.DeviceID = strings.TrimSpace(
-		claims.DeviceID,
-	)
-
-	if claims.UserID == "" {
+	if claims.User.Id == "" {
 		return nil, errInvalidJWT
 	}
 

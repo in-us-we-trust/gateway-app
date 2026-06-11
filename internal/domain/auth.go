@@ -1,5 +1,7 @@
 package domain
 
+import "encoding/json"
+
 type AuthRegisterRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
@@ -11,8 +13,9 @@ type LoginRequest struct {
 }
 
 type AuthLoginRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Email    string          `json:"email"`
+	Password string          `json:"password"`
+	User     json.RawMessage `json:"user,omitempty"`
 }
 
 type LoginData struct {

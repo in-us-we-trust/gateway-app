@@ -45,7 +45,7 @@ func (h *DeviceHandler) LinkMyDevice(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.service.LinkDevice(c.Request.Context(), claims.UserID, req)
+	resp, err := h.service.LinkDevice(c.Request.Context(), claims.User.Id, req)
 	if err != nil {
 		var detErr *domain.DetectorError
 		if errors.As(err, &detErr) {
@@ -75,7 +75,7 @@ func (h *DeviceHandler) UnlinkMyDevice(c *gin.Context) {
 		return
 	}
 
-	err := h.service.UnlinkDevice(c.Request.Context(), claims.UserID)
+	err := h.service.UnlinkDevice(c.Request.Context(), claims.User.Id)
 	if err != nil {
 		var detErr *domain.DetectorError
 		if errors.As(err, &detErr) {
@@ -106,7 +106,7 @@ func (h *DeviceHandler) GetMyDevice(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.service.GetMyDevice(c.Request.Context(), claims.UserID)
+	resp, err := h.service.GetMyDevice(c.Request.Context(), claims.User.Id)
 	if err != nil {
 		var detErr *domain.DetectorError
 		if errors.As(err, &detErr) {
@@ -138,7 +138,7 @@ func (h *DeviceHandler) GetMyDeviceEvents(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.service.GetMyDeviceEvents(c.Request.Context(), claims.UserID)
+	resp, err := h.service.GetMyDeviceEvents(c.Request.Context(), claims.User.Id)
 	if err != nil {
 		var detErr *domain.DetectorError
 		if errors.As(err, &detErr) {

@@ -8,6 +8,7 @@ import (
 	"gateway-app/internal/domain"
 	"gateway-app/pkg/apierror"
 	"net/http"
+	"net/url"
 )
 
 type HTTPUserClient struct {
@@ -198,6 +199,45 @@ func (c *HTTPUserClient) CreateUser(
 	return &domain.UserResponse{Data: *user}, nil
 }
 
+func (c *HTTPUserClient) GetUserByEmail(
+	ctx context.Context,
+	email string,
+) (*domain.UserDetail, error) {
+
+	endpoint, err := url.Parse(
+		fmt.Sprintf("%s/users/detail", c.baseURL),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	q := endpoint.Query()
+	q.Set("email", email)
+	endpoint.RawQuery = q.Encode()
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodGet,
+		endpoint.String(),
+		nil,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, handleAPIError(resp)
+	}
+
+	return decodeResponse[domain.UserDetail](resp)
+}
+
 func handleAPIError(
 	resp *http.Response,
 ) error {
@@ -207,15 +247,15 @@ func handleAPIError(
 	if err := json.NewDecoder(resp.Body).
 		Decode(&apiErr); err != nil {
 
-		return fmt.Errorf(
-			"unexpected status: %d",
-			resp.StatusCode,
-		)
+		return &domain.DetectorError{
+			StatusCode:     resp.StatusCode,
+			DetectorDetail: fmt.Sprintf("unexpected status: %d", resp.StatusCode),
+		}
 	}
 
-	return fmt.Errorf(
-		"external api error (%d): %s",
-		apiErr.Status,
-		apiErr.Detail,
-	)
+	return &domain.DetectorError{
+		StatusCode:     apiErr.Status,
+		DetectorDetail: apiErr.Detail,
+		Code:           apiErr.Code,
+	}
 }
