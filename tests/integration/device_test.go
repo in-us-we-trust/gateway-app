@@ -92,6 +92,7 @@ func setupRouter(usersURL, detectiveURL string) *gin.Engine {
 		protected.POST("/me/device", deviceHandler.LinkMyDevice)
 		protected.PATCH("/me/device", deviceHandler.UpdateMyDevice)
 		protected.DELETE("/me/device", deviceHandler.UnlinkMyDevice)
+		protected.GET("/me/device/events", deviceHandler.GetMyDeviceEvents)
 	}
 
 	return router
@@ -480,4 +481,253 @@ func TestUpdateDevice_DetectiveManagerError_ReturnsError(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestAnyEndpoint_MissingAuthorizationHeader_ReturnsUnauthorized(t *testing.T) {
+	router := setupRouter("http://unused", "http://unused")
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/me/device", nil)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+}
+
+func TestAnyEndpoint_MalformedBearerToken_ReturnsUnauthorized(t *testing.T) {
+	router := setupRouter("http://unused", "http://unused")
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/me/device", nil)
+	req.Header.Set("Authorization", "Bearer not.a.valid.jwt.token.with.too.many.parts")
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+}
+
+func TestAnyEndpoint_TokenMissingUserID_ReturnsUnauthorized(t *testing.T) {
+	payload, _ := json.Marshal(map[string]interface{}{"sub": "someone"})
+	encoded := base64.RawURLEncoding.EncodeToString(payload)
+	token := "Bearer eyJhbGciOiJub25lIn0." + encoded + ".sig"
+
+	router := setupRouter("http://unused", "http://unused")
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/me/device", nil)
+	req.Header.Set("Authorization", token)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+}
+
+func TestLinkDevice_InvalidRequestBody_ReturnsBadRequest(t *testing.T) {
+	router := setupRouter("http://unused", "http://unused")
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/me/device", bytes.NewBufferString("not-json"))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestUpdateDevice_InvalidRequestBody_ReturnsBadRequest(t *testing.T) {
+	router := setupRouter("http://unused", "http://unused")
+
+	req := httptest.NewRequest(http.MethodPatch, "/api/v1/me/device", bytes.NewBufferString("not-json"))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestLinkDevice_DetectiveManagerClaimError_ReturnsError(t *testing.T) {
+	usersMux := http.NewServeMux()
+	usersMux.HandleFunc(fmt.Sprintf("/users/%s/device", testUserID), func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(encodeStdResponse(t, usersManagerDevice))
+	})
+
+	detectiveMux := http.NewServeMux()
+	detectiveMux.HandleFunc(fmt.Sprintf("/v1/devices/%s/claim", testDeviceID), func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusConflict)
+		json.NewEncoder(w).Encode(map[string]interface{}{"detail": "device already claimed"})
+	})
+
+	usersSrv := newUsersMock(t, usersMux)
+	detectiveSrv := newDetectiveMock(t, detectiveMux)
+
+	router := setupRouter(usersSrv.URL, detectiveSrv.URL)
+
+	reqBody, _ := json.Marshal(domain.LinkDeviceRequest{DeviceID: testDeviceID, Name: "Test Device"})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/me/device", bytes.NewBuffer(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusConflict, w.Code)
+}
+
+func TestUnlinkDevice_GetUserDeviceError_ReturnsError(t *testing.T) {
+	usersMux := http.NewServeMux()
+	usersMux.HandleFunc(fmt.Sprintf("/users/%s/device", testUserID), func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]interface{}{"status": 404, "detail": "no device linked"})
+	})
+
+	detectiveMux := http.NewServeMux()
+	usersSrv := newUsersMock(t, usersMux)
+	detectiveSrv := newDetectiveMock(t, detectiveMux)
+
+	router := setupRouter(usersSrv.URL, detectiveSrv.URL)
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/me/device", nil)
+	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestUnlinkDevice_DetectiveManagerUnclaimError_ReturnsError(t *testing.T) {
+	usersMux := http.NewServeMux()
+	usersMux.HandleFunc(fmt.Sprintf("/users/%s/device", testUserID), func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write(encodeStdResponse(t, usersManagerDevice))
+		case http.MethodDelete:
+			w.WriteHeader(http.StatusNoContent)
+		}
+	})
+
+	detectiveMux := http.NewServeMux()
+	detectiveMux.HandleFunc(fmt.Sprintf("/v1/devices/%s/unclaim", testDeviceID), func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"detail": "unclaim failed"})
+	})
+
+	usersSrv := newUsersMock(t, usersMux)
+	detectiveSrv := newDetectiveMock(t, detectiveMux)
+
+	router := setupRouter(usersSrv.URL, detectiveSrv.URL)
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/me/device", nil)
+	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+func TestGetDeviceEvents_ReturnsEvents(t *testing.T) {
+	events := []domain.Event{
+		{ID: "evt-1", DeviceID: testDeviceID, Timestamp: "2026-06-27T18:00:00Z", Intruder: true, ImageURL: "http://img/1.jpg", EventType: "motion"},
+		{ID: "evt-2", DeviceID: testDeviceID, Timestamp: "2026-06-27T19:00:00Z", Intruder: false, ImageURL: "http://img/2.jpg", EventType: "bell"},
+	}
+
+	usersMux := http.NewServeMux()
+	usersMux.HandleFunc(fmt.Sprintf("/users/%s/device", testUserID), func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(encodeStdResponse(t, usersManagerDevice))
+	})
+
+	detectiveMux := http.NewServeMux()
+	detectiveMux.HandleFunc(fmt.Sprintf("/v1/devices/%s/events", testDeviceID), func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(encodeStdResponse(t, events))
+	})
+
+	usersSrv := newUsersMock(t, usersMux)
+	detectiveSrv := newDetectiveMock(t, detectiveMux)
+
+	router := setupRouter(usersSrv.URL, detectiveSrv.URL)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/me/device/events", nil)
+	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var respBody map[string]interface{}
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&respBody))
+	data := respBody["data"].([]interface{})
+
+	require.Len(t, data, 2)
+	first := data[0].(map[string]interface{})
+	assert.Equal(t, "evt-1", first["id"])
+	assert.Equal(t, "motion", first["eventType"])
+}
+
+func TestGetDeviceEvents_UsersManagerError_ReturnsError(t *testing.T) {
+	usersMux := http.NewServeMux()
+	usersMux.HandleFunc(fmt.Sprintf("/users/%s/device", testUserID), func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]interface{}{"status": 404, "detail": "no device linked"})
+	})
+
+	detectiveMux := http.NewServeMux()
+	usersSrv := newUsersMock(t, usersMux)
+	detectiveSrv := newDetectiveMock(t, detectiveMux)
+
+	router := setupRouter(usersSrv.URL, detectiveSrv.URL)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/me/device/events", nil)
+	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestGetDeviceEvents_DetectiveManagerError_ReturnsError(t *testing.T) {
+	usersMux := http.NewServeMux()
+	usersMux.HandleFunc(fmt.Sprintf("/users/%s/device", testUserID), func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(encodeStdResponse(t, usersManagerDevice))
+	})
+
+	detectiveMux := http.NewServeMux()
+	detectiveMux.HandleFunc(fmt.Sprintf("/v1/devices/%s/events", testDeviceID), func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"detail": "events fetch failed"})
+	})
+
+	usersSrv := newUsersMock(t, usersMux)
+	detectiveSrv := newDetectiveMock(t, detectiveMux)
+
+	router := setupRouter(usersSrv.URL, detectiveSrv.URL)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/me/device/events", nil)
+	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
