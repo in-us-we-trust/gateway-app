@@ -21,19 +21,32 @@ definitions:
         example: about:blank
         type: string
     type: object
-  domain.Device:
+  domain.DeviceResponseDto:
     properties:
+      city:
+        type: string
       createdAt:
         type: string
+      detectionThreshold:
+        type: integer
       deviceId:
+        type: string
+      firmwareVersion:
+        type: string
+      lastBoot:
+        type: string
+      lastSeen:
+        type: string
+      location:
         type: string
       name:
         type: string
-    type: object
-  domain.DeviceResponse:
-    properties:
-      data:
-        $ref: '#/definitions/domain.Device'
+      serialNumber:
+        type: string
+      status:
+        type: string
+      uptime:
+        type: integer
     type: object
   domain.Event:
     properties:
@@ -101,6 +114,15 @@ definitions:
       lastName:
         type: string
       password:
+        type: string
+    type: object
+  domain.UpdateDeviceRequest:
+    properties:
+      city:
+        type: string
+      detectionThreshold:
+        type: integer
+      location:
         type: string
     type: object
   domain.User:
@@ -216,7 +238,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/domain.DeviceResponse'
+            $ref: '#/definitions/domain.DeviceResponseDto'
         "401":
           description: Unauthorized
           schema:
@@ -228,6 +250,42 @@ paths:
       security:
       - BearerAuth: []
       summary: Get my linked device
+      tags:
+      - users
+    patch:
+      consumes:
+      - application/json
+      description: Partially updates the authenticated user's linked device. Only
+        city, detectionThreshold and location can be modified.
+      parameters:
+      - description: Fields to update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/domain.UpdateDeviceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.DeviceResponseDto'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+      security:
+      - BearerAuth: []
+      summary: Update my linked device
       tags:
       - users
     post:
@@ -247,7 +305,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/domain.DeviceResponse'
+            $ref: '#/definitions/domain.DeviceResponseDto'
         "404":
           description: Not Found
           schema:

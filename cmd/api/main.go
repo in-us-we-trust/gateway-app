@@ -81,6 +81,7 @@ func main() {
 	{
 		protected.GET("/me/device", deviceHandler.GetMyDevice)
 		protected.POST("/me/device", deviceHandler.LinkMyDevice)
+		protected.PATCH("/me/device", deviceHandler.UpdateMyDevice)
 		protected.DELETE("/me/device", deviceHandler.UnlinkMyDevice)
 		protected.GET("/me/device/events", deviceHandler.GetMyDeviceEvents)
 		protected.POST("/me/push-token", deviceHandler.RegisterPushToken)

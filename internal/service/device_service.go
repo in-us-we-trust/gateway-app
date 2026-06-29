@@ -24,25 +24,38 @@ func NewDeviceService(
 func (s *DeviceService) GetMyDevice(
 	ctx context.Context,
 	userID string,
-) (*domain.Device, error) {
+) (*domain.DeviceResponseDto, error) {
 
-	return s.userClient.GetUserDevice(
-		ctx,
-		userID,
-	)
+	device, err := s.userClient.GetUserDevice(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	detectiveDevice, err := s.detectiveClient.GetDevice(ctx, device.DeviceID)
+	if err != nil {
+		return nil, err
+	}
+
+	return domain.ToDeviceResponseDto(device, detectiveDevice), nil
 }
 
 func (s *DeviceService) LinkDevice(
 	ctx context.Context,
 	userID string,
 	req domain.LinkDeviceRequest,
-) (*domain.Device, error) {
+) (*domain.DeviceResponseDto, error) {
 
-	return s.userClient.LinkDevice(
-		ctx,
-		userID,
-		req,
-	)
+	device, err := s.userClient.LinkDevice(ctx, userID, req)
+	if err != nil {
+		return nil, err
+	}
+
+	detectiveDevice, err := s.detectiveClient.ClaimDevice(ctx, device.DeviceID)
+	if err != nil {
+		return nil, err
+	}
+
+	return domain.ToDeviceResponseDto(device, detectiveDevice), nil
 }
 
 func (s *DeviceService) UnlinkDevice(
@@ -50,10 +63,35 @@ func (s *DeviceService) UnlinkDevice(
 	userID string,
 ) error {
 
-	return s.userClient.UnlinkDevice(
-		ctx,
-		userID,
-	)
+	device, err := s.userClient.GetUserDevice(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	if err := s.userClient.UnlinkDevice(ctx, userID); err != nil {
+		return err
+	}
+
+	return s.detectiveClient.UnclaimDevice(ctx, device.DeviceID)
+}
+
+func (s *DeviceService) UpdateMyDevice(
+	ctx context.Context,
+	userID string,
+	req domain.UpdateDeviceRequest,
+) (*domain.DeviceResponseDto, error) {
+
+	device, err := s.userClient.GetUserDevice(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	detectiveDevice, err := s.detectiveClient.UpdateDevice(ctx, device.DeviceID, req)
+	if err != nil {
+		return nil, err
+	}
+
+	return domain.ToDeviceResponseDto(device, detectiveDevice), nil
 }
 
 func (s *DeviceService) GetMyDeviceEvents(

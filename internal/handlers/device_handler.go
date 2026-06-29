@@ -29,7 +29,7 @@ func NewDeviceHandler(svc service.DeviceService) *DeviceHandler {
 // @Produce json
 // @Security BearerAuth
 // @Param request body domain.LinkDeviceRequest true "Device payload"
-// @Success 200 {object} domain.DeviceResponse
+// @Success 200 {object} domain.DeviceResponseDto
 // // @Failure 401 {object} apierror.APIError
 // @Failure 404 {object} apierror.APIError
 // @Router /api/v1/me/device [post]
@@ -57,7 +57,7 @@ func (h *DeviceHandler) LinkMyDevice(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, resp)
+	c.JSON(http.StatusOK, domain.StandardResponse[*domain.DeviceResponseDto]{Data: resp})
 }
 
 // UnlinkMyDevice godoc
@@ -90,13 +90,53 @@ func (h *DeviceHandler) UnlinkMyDevice(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// UpdateMyDevice godoc
+// @Summary Update my linked device
+// @Description Partially updates the authenticated user's linked device. Only city, detectionThreshold and location can be modified.
+// @Tags users
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body domain.UpdateDeviceRequest true "Fields to update"
+// @Success 200 {object} domain.DeviceResponseDto
+// @Failure 400 {object} apierror.APIError
+// @Failure 401 {object} apierror.APIError
+// @Failure 404 {object} apierror.APIError
+// @Router /api/v1/me/device [patch]
+func (h *DeviceHandler) UpdateMyDevice(c *gin.Context) {
+	var req domain.UpdateDeviceRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		apierror.Respond(c, apierror.BadRequest(err.Error(), c.Request.URL.Path))
+		return
+	}
+
+	claims, ok := requestctx.Claims(c.Request.Context())
+	if !ok {
+		h.handleJWTNotPresentError(c)
+		return
+	}
+
+	resp, err := h.service.UpdateMyDevice(c.Request.Context(), claims.User.Id, req)
+	if err != nil {
+		var detErr *domain.DetectorError
+		if errors.As(err, &detErr) {
+			apierror.Respond(c, apierror.FromDetectorError(detErr.DetectorDetail, c.Request.URL.Path, detErr.Code, detErr.StatusCode))
+			return
+		}
+		apierror.Respond(c, apierror.InternalServerError("failed to update device", c.Request.URL.Path))
+		return
+	}
+
+	c.JSON(http.StatusOK, domain.StandardResponse[*domain.DeviceResponseDto]{Data: resp})
+}
+
 // GetMyDevice godoc
 // @Summary Get my linked device
 // @Description Returns the authenticated user's linked device
 // @Tags users
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} domain.DeviceResponse
+// @Success 200 {object} domain.DeviceResponseDto
 // @Failure 401 {object} apierror.APIError
 // @Failure 404 {object} apierror.APIError
 // @Router /api/v1/me/device [get]
@@ -118,7 +158,7 @@ func (h *DeviceHandler) GetMyDevice(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, resp)
+	c.JSON(http.StatusOK, domain.StandardResponse[*domain.DeviceResponseDto]{Data: resp})
 }
 
 // GetMyDeviceEvents godoc
@@ -150,7 +190,7 @@ func (h *DeviceHandler) GetMyDeviceEvents(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, resp)
+	c.JSON(http.StatusOK, domain.StandardResponse[*[]domain.Event]{Data: resp})
 }
 
 func (h *DeviceHandler) handleJWTNotPresentError(

@@ -126,7 +126,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/domain.DeviceResponse"
+                            "$ref": "#/definitions/domain.DeviceResponseDto"
                         }
                     },
                     "401": {
@@ -175,7 +175,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/domain.DeviceResponse"
+                            "$ref": "#/definitions/domain.DeviceResponseDto"
                         }
                     },
                     "404": {
@@ -200,6 +200,61 @@ const docTemplate = `{
                 "responses": {
                     "204": {
                         "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apierror.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/apierror.APIError"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Partially updates the authenticated user's linked device. Only city, detectionThreshold and location can be modified.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Update my linked device",
+                "parameters": [
+                    {
+                        "description": "Fields to update",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.UpdateDeviceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.DeviceResponseDto"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apierror.APIError"
+                        }
                     },
                     "401": {
                         "description": "Unauthorized",
@@ -375,25 +430,44 @@ const docTemplate = `{
                 }
             }
         },
-        "domain.Device": {
+        "domain.DeviceResponseDto": {
             "type": "object",
             "properties": {
+                "city": {
+                    "type": "string"
+                },
                 "createdAt": {
                     "type": "string"
+                },
+                "detectionThreshold": {
+                    "type": "integer"
                 },
                 "deviceId": {
                     "type": "string"
                 },
+                "firmwareVersion": {
+                    "type": "string"
+                },
+                "lastBoot": {
+                    "type": "string"
+                },
+                "lastSeen": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string"
+                },
                 "name": {
                     "type": "string"
-                }
-            }
-        },
-        "domain.DeviceResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "$ref": "#/definitions/domain.Device"
+                },
+                "serialNumber": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "uptime": {
+                    "type": "integer"
                 }
             }
         },
@@ -499,6 +573,20 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.UpdateDeviceRequest": {
+            "type": "object",
+            "properties": {
+                "city": {
+                    "type": "string"
+                },
+                "detectionThreshold": {
+                    "type": "integer"
+                },
+                "location": {
                     "type": "string"
                 }
             }

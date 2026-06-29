@@ -1,6 +1,6 @@
 package domain
 
-type DeviceResponse struct {
+type UsersManagerDeviceResponse struct {
 	Data Device `json:"data"`
 }
 
