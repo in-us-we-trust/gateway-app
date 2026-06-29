@@ -15,6 +15,7 @@ var commands = map[string][]string{
 	"test":         {"go", "test", "./tests/integration/...", "-v"},
 	"build":        {"go", "build", "-o", "bin/server", "./cmd/api"},
 	"docker-build": {"docker", "build", "-t", "gateway-app", "."},
+	"format":       {"gofmt", "-w", "."},
 	"swagger":      swaggerArgs,
 }
 

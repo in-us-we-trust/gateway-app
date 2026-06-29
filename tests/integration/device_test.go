@@ -175,7 +175,6 @@ func TestLinkDevice_UsersManagerError_ReturnsError(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
-
 func TestUnlinkDevice_CallsUnclaimOnDetectiveManager(t *testing.T) {
 	unclaimCalled := false
 
@@ -247,7 +246,6 @@ func TestUnlinkDevice_UsersManagerDeleteError_ReturnsError(t *testing.T) {
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
-
 
 func TestGetDevice_EnrichesResponseFromDetectiveManager(t *testing.T) {
 	usersMux := http.NewServeMux()
@@ -357,7 +355,6 @@ func TestGetDevice_DetectiveManagerError_ReturnsError(t *testing.T) {
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
-
 
 func TestUpdateDevice_UpdatesAndEnrichesResponse(t *testing.T) {
 	city := "Buenos Aires"
