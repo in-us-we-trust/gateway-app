@@ -42,6 +42,14 @@ var usersManagerDevice = domain.Device{
 	CreatedAt: "2026-06-27T17:00:00Z",
 }
 
+var appDeviceResponse = domain.AppDeviceResponse{
+	ID:         42,
+	UserID:     testUserID,
+	DeviceName: "iPhone 15",
+	Platform:   "ios",
+	Enabled:    true,
+}
+
 var detectiveDevice = domain.DetectiveDevice{
 	ID:                 testDeviceID,
 	SerialNumber:       "ESP32-000001",
@@ -93,6 +101,8 @@ func setupRouter(usersURL, detectiveURL string) *gin.Engine {
 		protected.PATCH("/me/device", deviceHandler.UpdateMyDevice)
 		protected.DELETE("/me/device", deviceHandler.UnlinkMyDevice)
 		protected.GET("/me/device/events", deviceHandler.GetMyDeviceEvents)
+		protected.POST("/me/push-token", deviceHandler.RegisterPushToken)
+		protected.DELETE("/me/push-token/:appDeviceId", deviceHandler.DeletePushToken)
 	}
 
 	return router
@@ -730,4 +740,135 @@ func TestGetDeviceEvents_DetectiveManagerError_ReturnsError(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+func TestRegisterPushToken_ReturnsAppDevice(t *testing.T) {
+	usersMux := http.NewServeMux()
+	usersMux.HandleFunc(fmt.Sprintf("/users/%s/app-devices", testUserID), func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+
+		var req domain.RegisterPushTokenRequest
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
+		assert.Equal(t, "iPhone 15", req.DeviceName)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(appDeviceResponse)
+	})
+
+	usersSrv := newUsersMock(t, usersMux)
+	detectiveSrv := newDetectiveMock(t, http.NewServeMux())
+
+	router := setupRouter(usersSrv.URL, detectiveSrv.URL)
+
+	reqBody, _ := json.Marshal(domain.RegisterPushTokenRequest{
+		DeviceName: "iPhone 15",
+		Platform:   "ios",
+		PushToken:  "tok-abc",
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/me/push-token", bytes.NewBuffer(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var resp domain.AppDeviceResponse
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&resp))
+	assert.Equal(t, int64(42), resp.ID)
+	assert.Equal(t, "iPhone 15", resp.DeviceName)
+}
+
+func TestRegisterPushToken_InvalidBody_ReturnsBadRequest(t *testing.T) {
+	router := setupRouter("http://unused", "http://unused")
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/me/push-token", bytes.NewBufferString("not-json"))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestRegisterPushToken_UsersManagerError_ReturnsError(t *testing.T) {
+	usersMux := http.NewServeMux()
+	usersMux.HandleFunc(fmt.Sprintf("/users/%s/app-devices", testUserID), func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		json.NewEncoder(w).Encode(map[string]interface{}{"status": 422, "detail": "invalid push token"})
+	})
+
+	usersSrv := newUsersMock(t, usersMux)
+	detectiveSrv := newDetectiveMock(t, http.NewServeMux())
+
+	router := setupRouter(usersSrv.URL, detectiveSrv.URL)
+
+	reqBody, _ := json.Marshal(domain.RegisterPushTokenRequest{DeviceName: "iPhone 15", Platform: "ios", PushToken: "tok"})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/me/push-token", bytes.NewBuffer(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
+}
+
+func TestDeletePushToken_Success(t *testing.T) {
+	usersMux := http.NewServeMux()
+	usersMux.HandleFunc(fmt.Sprintf("/users/%s/app-devices/42/push-token", testUserID), func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodDelete, r.Method)
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	usersSrv := newUsersMock(t, usersMux)
+	detectiveSrv := newDetectiveMock(t, http.NewServeMux())
+
+	router := setupRouter(usersSrv.URL, detectiveSrv.URL)
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/me/push-token/42", nil)
+	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNoContent, w.Code)
+}
+
+func TestDeletePushToken_InvalidAppDeviceId_ReturnsBadRequest(t *testing.T) {
+	router := setupRouter("http://unused", "http://unused")
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/me/push-token/not-a-number", nil)
+	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestDeletePushToken_UsersManagerError_ReturnsError(t *testing.T) {
+	usersMux := http.NewServeMux()
+	usersMux.HandleFunc(fmt.Sprintf("/users/%s/app-devices/42/push-token", testUserID), func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]interface{}{"status": 404, "detail": "app device not found"})
+	})
+
+	usersSrv := newUsersMock(t, usersMux)
+	detectiveSrv := newDetectiveMock(t, http.NewServeMux())
+
+	router := setupRouter(usersSrv.URL, detectiveSrv.URL)
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/me/push-token/42", nil)
+	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
 }
