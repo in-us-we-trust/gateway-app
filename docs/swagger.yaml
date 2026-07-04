@@ -21,6 +21,29 @@ definitions:
         example: about:blank
         type: string
     type: object
+  domain.AddPersonImagesRequest:
+    properties:
+      images:
+        items:
+          type: string
+        type: array
+    required:
+    - images
+    type: object
+  domain.CreatePersonRequest:
+    properties:
+      images:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      role:
+        type: string
+    required:
+    - name
+    - role
+    type: object
   domain.DeviceResponseDto:
     properties:
       city:
@@ -70,6 +93,19 @@ definitions:
           $ref: '#/definitions/domain.Event'
         type: array
     type: object
+  domain.FaceEmbedding:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: integer
+      personId:
+        type: integer
+      vector:
+        items:
+          type: number
+        type: array
+    type: object
   domain.LinkDeviceRequest:
     properties:
       deviceId:
@@ -95,6 +131,28 @@ definitions:
     properties:
       data:
         $ref: '#/definitions/domain.LoginData'
+    type: object
+  domain.Person:
+    properties:
+      deviceId:
+        type: string
+      id:
+        type: integer
+      images:
+        items:
+          $ref: '#/definitions/domain.PersonImage'
+        type: array
+      name:
+        type: string
+      role:
+        type: string
+    type: object
+  domain.PersonImage:
+    properties:
+      id:
+        type: integer
+      imageUrl:
+        type: string
     type: object
   domain.RegisterPushTokenRequest:
     properties:
@@ -123,6 +181,13 @@ definitions:
       detectionThreshold:
         type: integer
       location:
+        type: string
+    type: object
+  domain.UpdatePersonRequest:
+    properties:
+      name:
+        type: string
+      role:
         type: string
     type: object
   domain.User:
@@ -343,6 +408,263 @@ paths:
       summary: Get authenticated user's device events
       tags:
       - users
+  /api/v1/me/device/persons:
+    get:
+      description: Returns all persons registered on the authenticated user's linked
+        device
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.Person'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+      security:
+      - BearerAuth: []
+      summary: List persons for authenticated user's device
+      tags:
+      - persons
+    post:
+      consumes:
+      - application/json
+      description: Registers a new person with optional face images on the linked
+        device
+      parameters:
+      - description: Person payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/domain.CreatePersonRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Person'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+      security:
+      - BearerAuth: []
+      summary: Create a person on the authenticated user's device
+      tags:
+      - persons
+  /api/v1/me/device/persons/{personId}:
+    delete:
+      description: Removes a registered person and their associated data
+      parameters:
+      - description: Person ID
+        in: path
+        name: personId
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+      security:
+      - BearerAuth: []
+      summary: Delete a person from the authenticated user's device
+      tags:
+      - persons
+    get:
+      description: Returns a single person registered on the linked device
+      parameters:
+      - description: Person ID
+        in: path
+        name: personId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Person'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+      security:
+      - BearerAuth: []
+      summary: Get a person by ID from the authenticated user's device
+      tags:
+      - persons
+    patch:
+      consumes:
+      - application/json
+      description: Updates the name and/or role of a registered person
+      parameters:
+      - description: Person ID
+        in: path
+        name: personId
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/domain.UpdatePersonRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Person'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+      security:
+      - BearerAuth: []
+      summary: Partially update a person on the authenticated user's device
+      tags:
+      - persons
+  /api/v1/me/device/persons/{personId}/face-embeddings:
+    get:
+      description: Returns the face embedding vectors stored for a registered person
+      parameters:
+      - description: Person ID
+        in: path
+        name: personId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.FaceEmbedding'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+      security:
+      - BearerAuth: []
+      summary: Get face embeddings for a person
+      tags:
+      - persons
+  /api/v1/me/device/persons/{personId}/images:
+    post:
+      consumes:
+      - application/json
+      description: Adds one or more base64-encoded face images to a registered person
+      parameters:
+      - description: Person ID
+        in: path
+        name: personId
+        required: true
+        type: string
+      - description: Images payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/domain.AddPersonImagesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Person'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+      security:
+      - BearerAuth: []
+      summary: Add face images to a person
+      tags:
+      - persons
+  /api/v1/me/device/persons/{personId}/images/{imageId}:
+    delete:
+      description: Removes a specific face image from a registered person
+      parameters:
+      - description: Person ID
+        in: path
+        name: personId
+        required: true
+        type: string
+      - description: Image ID
+        in: path
+        name: imageId
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+      security:
+      - BearerAuth: []
+      summary: Delete a face image from a person
+      tags:
+      - persons
   /api/v1/me/push-token:
     post:
       consumes:
