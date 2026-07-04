@@ -32,4 +32,54 @@ type DetectorClient interface {
 		deviceID string,
 		req domain.UpdateDeviceRequest,
 	) (*domain.DetectiveDevice, error)
+
+	ListPersons(
+		ctx context.Context,
+		deviceID string,
+	) (*[]domain.Person, error)
+
+	CreatePerson(
+		ctx context.Context,
+		deviceID string,
+		req domain.CreatePersonRequest,
+	) (*domain.Person, error)
+
+	GetPerson(
+		ctx context.Context,
+		deviceID string,
+		personID string,
+	) (*domain.Person, error)
+
+	UpdatePerson(
+		ctx context.Context,
+		deviceID string,
+		personID string,
+		req domain.UpdatePersonRequest,
+	) (*domain.Person, error)
+
+	DeletePerson(
+		ctx context.Context,
+		deviceID string,
+		personID string,
+	) error
+
+	AddPersonImages(
+		ctx context.Context,
+		deviceID string,
+		personID string,
+		req domain.AddPersonImagesRequest,
+	) (*domain.Person, error)
+
+	GetFaceEmbeddings(
+		ctx context.Context,
+		deviceID string,
+		personID string,
+	) (*[]domain.FaceEmbedding, error)
+
+	DeletePersonImage(
+		ctx context.Context,
+		deviceID string,
+		personID string,
+		imageID string,
+	) error
 }
