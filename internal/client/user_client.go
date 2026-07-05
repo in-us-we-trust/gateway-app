@@ -40,4 +40,28 @@ type UserClient interface {
 		userID string,
 		appDeviceID int64,
 	) error
+
+	ListContacts(
+		ctx context.Context,
+		deviceID string,
+	) (*[]domain.Contact, error)
+
+	CreateContact(
+		ctx context.Context,
+		deviceID string,
+		req domain.CreateContactRequest,
+	) (*domain.Contact, error)
+
+	UpdateContact(
+		ctx context.Context,
+		deviceID string,
+		contactID string,
+		req domain.UpdateContactRequest,
+	) (*domain.Contact, error)
+
+	DeleteContact(
+		ctx context.Context,
+		deviceID string,
+		contactID string,
+	) error
 }
