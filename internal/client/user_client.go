@@ -64,4 +64,10 @@ type UserClient interface {
 		deviceID string,
 		contactID string,
 	) error
+
+	GetContactByID(
+		ctx context.Context,
+		deviceID string,
+		contactID string,
+	) (*domain.Contact, error)
 }

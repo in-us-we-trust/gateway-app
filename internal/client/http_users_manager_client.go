@@ -470,6 +470,41 @@ func (c *HTTPUserClient) DeleteContact(
 	return nil
 }
 
+func (c *HTTPUserClient) GetContactByID(
+	ctx context.Context,
+	deviceID string,
+	contactID string,
+) (*domain.Contact, error) {
+	url := fmt.Sprintf(
+		"%s/devices/%s/contacts/%s",
+		c.baseURL,
+		deviceID,
+		contactID,
+	)
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodGet,
+		url,
+		nil,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, handleAPIError(resp)
+	}
+
+	return decodeObject[domain.Contact](resp)
+}
+
 func handleAPIError(
 	resp *http.Response,
 ) error {

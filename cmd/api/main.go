@@ -109,6 +109,7 @@ func main() {
 		protected.DELETE("/me/device/persons/:personId/images/:imageId", personHandler.DeletePersonImage)
 
 		protected.GET("/me/device/contacts", contactHandler.ListContacts)
+		protected.GET("/me/device/contacts/:contactId", contactHandler.GetContactByID)
 		protected.POST("/me/device/contacts", contactHandler.CreateContact)
 		protected.PATCH("/me/device/contacts/:contactId", contactHandler.UpdateContact)
 		protected.DELETE("/me/device/contacts/:contactId", contactHandler.DeleteContact)
