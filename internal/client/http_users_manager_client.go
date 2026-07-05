@@ -39,6 +39,20 @@ func decodeResponse[T any](
 	return &wrapper.Data, nil
 }
 
+func decodeArrayResponse[T any](
+	resp *http.Response,
+) (*[]T, error) {
+	var data []T
+
+	if err := json.NewDecoder(resp.Body).
+		Decode(&data); err != nil {
+
+		return nil, err
+	}
+
+	return &data, nil
+}
+
 func (c *HTTPUserClient) GetUserDevice(
 	ctx context.Context,
 	userID string,
@@ -298,6 +312,164 @@ func (c *HTTPUserClient) DeletePushToken(
 	return nil
 }
 
+func (c *HTTPUserClient) ListContacts(
+	ctx context.Context,
+	deviceID string,
+) (*[]domain.Contact, error) {
+	url := fmt.Sprintf(
+		"%s/devices/%s/contacts",
+		c.baseURL,
+		deviceID,
+	)
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodGet,
+		url,
+		nil,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, handleAPIError(resp)
+	}
+
+	return decodeArrayResponse[domain.Contact](resp)
+}
+
+func (c *HTTPUserClient) CreateContact(
+	ctx context.Context,
+	deviceID string,
+	payload domain.CreateContactRequest,
+) (*domain.Contact, error) {
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	url := fmt.Sprintf(
+		"%s/devices/%s/contacts",
+		c.baseURL,
+		deviceID,
+	)
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		url,
+		bytes.NewBuffer(body),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set(
+		"Content-Type",
+		"application/json",
+	)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		return nil, handleAPIError(resp)
+	}
+
+	return decodeObject[domain.Contact](resp)
+}
+
+func (c *HTTPUserClient) UpdateContact(
+	ctx context.Context,
+	deviceID string,
+	contactID string,
+	payload domain.UpdateContactRequest,
+) (*domain.Contact, error) {
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	url := fmt.Sprintf(
+		"%s/devices/%s/contacts/%s",
+		c.baseURL,
+		deviceID,
+		contactID,
+	)
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPatch,
+		url,
+		bytes.NewBuffer(body),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set(
+		"Content-Type",
+		"application/json",
+	)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, handleAPIError(resp)
+	}
+
+	return decodeObject[domain.Contact](resp)
+}
+
+func (c *HTTPUserClient) DeleteContact(
+	ctx context.Context,
+	deviceID string,
+	contactID string,
+) error {
+	url := fmt.Sprintf(
+		"%s/devices/%s/contacts/%s",
+		c.baseURL,
+		deviceID,
+		contactID,
+	)
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodDelete,
+		url,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNoContent {
+		return handleAPIError(resp)
+	}
+
+	return nil
+}
+
 func handleAPIError(
 	resp *http.Response,
 ) error {
@@ -318,4 +490,14 @@ func handleAPIError(
 		DetectorDetail: apiErr.Detail,
 		Code:           apiErr.Code,
 	}
+}
+
+func decodeObject[T any](resp *http.Response) (*T, error) {
+	var data T
+
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return nil, err
+	}
+
+	return &data, nil
 }

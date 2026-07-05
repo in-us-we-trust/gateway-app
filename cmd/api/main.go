@@ -47,6 +47,11 @@ func main() {
 		detectorClient,
 	)
 
+	contactService := service.NewContactService(
+		userClient,
+		detectorClient,
+	)
+
 	authService := service.NewAuthService(
 		userClient,
 		authClient,
@@ -54,6 +59,7 @@ func main() {
 
 	deviceHandler := handlers.NewDeviceHandler(deviceService)
 	personHandler := handlers.NewPersonHandler(personService)
+	contactHandler := handlers.NewContactHandler(contactService)
 	authHandler := handlers.NewAuthHandler(authService)
 
 	router := gin.Default()
@@ -101,6 +107,11 @@ func main() {
 		protected.POST("/me/device/persons/:personId/images", personHandler.AddPersonImages)
 		protected.GET("/me/device/persons/:personId/face-embeddings", personHandler.GetFaceEmbeddings)
 		protected.DELETE("/me/device/persons/:personId/images/:imageId", personHandler.DeletePersonImage)
+
+		protected.GET("/me/device/contacts", contactHandler.ListContacts)
+		protected.POST("/me/device/contacts", contactHandler.CreateContact)
+		protected.PATCH("/me/device/contacts/:contactId", contactHandler.UpdateContact)
+		protected.DELETE("/me/device/contacts/:contactId", contactHandler.DeleteContact)
 	}
 
 	log.Printf("starting server on :%s", cfg.Port)
