@@ -8,13 +8,13 @@ type NotificationToken struct {
 }
 
 type Contact struct {
-	ContactId          string               `json:"contactId"`
-	UserId             string               `json:"userId"`
-	Name               string               `json:"name"`
-	LastName           string               `json:"lastName"`
-	Email              string               `json:"email"`
-	IsOwner            bool                 `json:"isOwner"`
-	NotificationTokens []NotificationToken  `json:"notificationTokens"`
+	ContactId          string              `json:"contactId"`
+	UserId             string              `json:"userId"`
+	Name               string              `json:"name"`
+	LastName           string              `json:"lastName"`
+	Email              string              `json:"email"`
+	IsOwner            bool                `json:"isOwner"`
+	NotificationTokens []NotificationToken `json:"notificationTokens"`
 }
 
 type CreateContactRequest struct {
