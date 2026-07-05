@@ -53,6 +53,7 @@ func setupContactRouter(usersURL, detectiveURL string) *gin.Engine {
 	protected.Use(middleware.JWTAuth())
 	{
 		protected.GET("/me/device/contacts", contactHandler.ListContacts)
+		protected.GET("/me/device/contacts/:contactId", contactHandler.GetContactByID)
 		protected.POST("/me/device/contacts", contactHandler.CreateContact)
 		protected.PATCH("/me/device/contacts/:contactId", contactHandler.UpdateContact)
 		protected.DELETE("/me/device/contacts/:contactId", contactHandler.DeleteContact)
@@ -361,6 +362,74 @@ func TestDeleteContact_UsersManagerError_ReturnsError(t *testing.T) {
 	router := setupContactRouter(usersSrv.URL, detectiveSrv.URL)
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/me/device/contacts/"+testContactID, nil)
+	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestGetContactByID_ReturnsContact(t *testing.T) {
+	usersMux := http.NewServeMux()
+	usersMux.HandleFunc(fmt.Sprintf("/users/%s/device", testUserID), func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(encodeStdResponse(t, usersManagerDevice))
+	})
+
+	usersMux.HandleFunc(fmt.Sprintf("/devices/%s/contacts/%s", testDeviceID, testContactID), func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		b, _ := json.Marshal(testContact)
+		w.Write(b)
+	})
+
+	usersSrv := newUsersMock(t, usersMux)
+	detectiveSrv := newDetectiveMock(t, http.NewServeMux())
+
+	router := setupContactRouter(usersSrv.URL, detectiveSrv.URL)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/me/device/contacts/"+testContactID, nil)
+	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var respBody map[string]interface{}
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&respBody))
+	data := respBody["data"].(map[string]interface{})
+
+	assert.Equal(t, "John", data["name"])
+	assert.Equal(t, "Doe", data["lastName"])
+	assert.Equal(t, "john@example.com", data["email"])
+}
+
+func TestGetContactByID_UsersManagerError_ReturnsError(t *testing.T) {
+	usersMux := http.NewServeMux()
+	usersMux.HandleFunc(fmt.Sprintf("/users/%s/device", testUserID), func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(encodeStdResponse(t, usersManagerDevice))
+	})
+
+	usersMux.HandleFunc(fmt.Sprintf("/devices/%s/contacts/%s", testDeviceID, testContactID), func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]interface{}{"status": 404, "detail": "contact not found"})
+	})
+
+	usersSrv := newUsersMock(t, usersMux)
+	detectiveSrv := newDetectiveMock(t, http.NewServeMux())
+
+	router := setupContactRouter(usersSrv.URL, detectiveSrv.URL)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/me/device/contacts/"+testContactID, nil)
 	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
 
 	w := httptest.NewRecorder()

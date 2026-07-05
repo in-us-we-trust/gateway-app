@@ -146,6 +146,35 @@ func (h *ContactHandler) DeleteContact(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// GetContactByID godoc
+// @Summary Get a specific contact by ID
+// @Description Returns a single contact associated with the authenticated user's device
+// @Tags contacts
+// @Produce json
+// @Security BearerAuth
+// @Param contactId path string true "Contact ID"
+// @Success 200 {object} domain.Contact
+// @Failure 401 {object} apierror.APIError
+// @Failure 404 {object} apierror.APIError
+// @Router /api/v1/me/device/contacts/{contactId} [get]
+func (h *ContactHandler) GetContactByID(c *gin.Context) {
+	claims, ok := requestctx.Claims(c.Request.Context())
+	if !ok {
+		h.handleJWTNotPresentError(c)
+		return
+	}
+
+	contactID := c.Param("contactId")
+
+	resp, err := h.service.GetContactByID(c.Request.Context(), claims.User.Id, contactID)
+	if err != nil {
+		h.handleServiceError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, domain.StandardResponse[*domain.Contact]{Data: resp})
+}
+
 func (h *ContactHandler) handleServiceError(c *gin.Context, err error) {
 	var detErr *domain.DetectorError
 	if errors.As(err, &detErr) {

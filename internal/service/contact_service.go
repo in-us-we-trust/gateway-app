@@ -73,3 +73,21 @@ func (s *ContactService) DeleteContact(
 
 	return s.userClient.DeleteContact(ctx, device.DeviceID, contactID)
 }
+
+func (s *ContactService) GetContactByID(
+	ctx context.Context,
+	userID string,
+	contactID string,
+) (*domain.Contact, error) {
+	device, err := s.userClient.GetUserDevice(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	contacts, err := s.userClient.GetContactByID(ctx, device.DeviceID, contactID)
+	if err != nil {
+		return nil, err
+	}
+
+	return contacts, nil
+}
