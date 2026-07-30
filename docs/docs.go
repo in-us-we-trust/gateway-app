@@ -271,247 +271,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/me/device/contacts": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Returns all contacts registered on the authenticated user's linked device",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "contacts"
-                ],
-                "summary": "List contacts for authenticated user's device",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/domain.Contact"
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/apierror.APIError"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/apierror.APIError"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Adds a secondary contact to the linked device",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "contacts"
-                ],
-                "summary": "Create a contact on the authenticated user's device",
-                "parameters": [
-                    {
-                        "description": "Contact payload",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/domain.CreateContactRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/domain.Contact"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/apierror.APIError"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/apierror.APIError"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/apierror.APIError"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/me/device/contacts/{contactId}": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Returns a single contact associated with the authenticated user's device",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "contacts"
-                ],
-                "summary": "Get a specific contact by ID",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Contact ID",
-                        "name": "contactId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/domain.Contact"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/apierror.APIError"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/apierror.APIError"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Removes a registered contact",
-                "tags": [
-                    "contacts"
-                ],
-                "summary": "Delete a contact from the authenticated user's device",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Contact ID",
-                        "name": "contactId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/apierror.APIError"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/apierror.APIError"
-                        }
-                    }
-                }
-            },
-            "patch": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Updates contact information for a registered contact",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "contacts"
-                ],
-                "summary": "Partially update a contact on the authenticated user's device",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Contact ID",
-                        "name": "contactId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Fields to update",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/domain.UpdateContactRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/domain.Contact"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/apierror.APIError"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/apierror.APIError"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/apierror.APIError"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/me/device/events": {
             "get": {
                 "security": [
@@ -562,7 +321,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns all persons registered on the authenticated user's linked device",
+                "description": "Returns all persons with their contact info registered on the authenticated user's linked device",
                 "produces": [
                     "application/json"
                 ],
@@ -576,7 +335,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/domain.Person"
+                                "$ref": "#/definitions/domain.PersonWithContact"
                             }
                         }
                     },
@@ -600,7 +359,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Registers a new person with optional face images on the linked device",
+                "description": "Registers a new person with face images and contact information on the linked device",
                 "consumes": [
                     "application/json"
                 ],
@@ -610,15 +369,15 @@ const docTemplate = `{
                 "tags": [
                     "persons"
                 ],
-                "summary": "Create a person on the authenticated user's device",
+                "summary": "Create a person with contact on the authenticated user's device",
                 "parameters": [
                     {
-                        "description": "Person payload",
+                        "description": "Person with contact payload",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/domain.CreatePersonRequest"
+                            "$ref": "#/definitions/domain.CreatePersonWithContactRequest"
                         }
                     }
                 ],
@@ -626,7 +385,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/domain.Person"
+                            "$ref": "#/definitions/domain.PersonWithContact"
                         }
                     },
                     "400": {
@@ -657,7 +416,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns a single person registered on the linked device",
+                "description": "Returns a single person with their contact info registered on the linked device",
                 "produces": [
                     "application/json"
                 ],
@@ -678,7 +437,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/domain.Person"
+                            "$ref": "#/definitions/domain.PersonWithContact"
                         }
                     },
                     "401": {
@@ -701,11 +460,11 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Removes a registered person and their associated data",
+                "description": "Removes a registered person and their associated contact; NotFound from either service is tolerated",
                 "tags": [
                     "persons"
                 ],
-                "summary": "Delete a person from the authenticated user's device",
+                "summary": "Delete a person and their contact from the authenticated user's device",
                 "parameters": [
                     {
                         "type": "string",
@@ -724,12 +483,6 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/apierror.APIError"
                         }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/apierror.APIError"
-                        }
                     }
                 }
             },
@@ -739,7 +492,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Updates the name and/or role of a registered person",
+                "description": "Updates person and/or contact fields; all fields are optional",
                 "consumes": [
                     "application/json"
                 ],
@@ -749,7 +502,7 @@ const docTemplate = `{
                 "tags": [
                     "persons"
                 ],
-                "summary": "Partially update a person on the authenticated user's device",
+                "summary": "Partially update a person and their contact on the authenticated user's device",
                 "parameters": [
                     {
                         "type": "string",
@@ -764,7 +517,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/domain.UpdatePersonRequest"
+                            "$ref": "#/definitions/domain.UpdatePersonWithContactRequest"
                         }
                     }
                 ],
@@ -772,62 +525,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/domain.Person"
+                            "$ref": "#/definitions/domain.PersonWithContact"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/apierror.APIError"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/apierror.APIError"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/apierror.APIError"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/me/device/persons/{personId}/face-embeddings": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Returns the face embedding vectors stored for a registered person",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "persons"
-                ],
-                "summary": "Get face embeddings for a person",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Person ID",
-                        "name": "personId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/domain.FaceEmbedding"
-                            }
                         }
                     },
                     "401": {
@@ -1086,50 +790,16 @@ const docTemplate = `{
                 }
             }
         },
-        "domain.Contact": {
-            "type": "object",
-            "properties": {
-                "contactId": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "isOwner": {
-                    "type": "boolean"
-                },
-                "lastName": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "notificationTokens": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.NotificationToken"
-                    }
-                },
-                "userId": {
-                    "type": "string"
-                }
-            }
-        },
-        "domain.CreateContactRequest": {
+        "domain.ContactCreateInput": {
             "type": "object",
             "required": [
-                "email",
-                "lastName",
-                "name"
+                "email"
             ],
             "properties": {
+                "cellphone": {
+                    "type": "string"
+                },
                 "email": {
-                    "type": "string"
-                },
-                "lastName": {
-                    "type": "string"
-                },
-                "name": {
                     "type": "string"
                 },
                 "userId": {
@@ -1137,20 +807,57 @@ const docTemplate = `{
                 }
             }
         },
-        "domain.CreatePersonRequest": {
+        "domain.ContactSummary": {
+            "type": "object",
+            "properties": {
+                "cellphone": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.ContactUpdateInput": {
+            "type": "object",
+            "properties": {
+                "cellphone": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.CreatePersonWithContactRequest": {
             "type": "object",
             "required": [
-                "name",
+                "firstName",
+                "images",
+                "lastName",
                 "role"
             ],
             "properties": {
+                "contact": {
+                    "$ref": "#/definitions/domain.ContactCreateInput"
+                },
+                "firstName": {
+                    "type": "string"
+                },
                 "images": {
                     "type": "array",
+                    "minItems": 3,
                     "items": {
                         "type": "string"
                     }
                 },
-                "name": {
+                "lastName": {
                     "type": "string"
                 },
                 "role": {
@@ -1233,26 +940,6 @@ const docTemplate = `{
                 }
             }
         },
-        "domain.FaceEmbedding": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "personId": {
-                    "type": "integer"
-                },
-                "vector": {
-                    "type": "array",
-                    "items": {
-                        "type": "number"
-                    }
-                }
-            }
-        },
         "domain.LinkDeviceRequest": {
             "type": "object",
             "properties": {
@@ -1294,23 +981,6 @@ const docTemplate = `{
                 }
             }
         },
-        "domain.NotificationToken": {
-            "type": "object",
-            "properties": {
-                "appDeviceId": {
-                    "type": "integer"
-                },
-                "deviceName": {
-                    "type": "string"
-                },
-                "platform": {
-                    "type": "string"
-                },
-                "token": {
-                    "type": "string"
-                }
-            }
-        },
         "domain.Person": {
             "type": "object",
             "properties": {
@@ -1318,7 +988,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "id": {
-                    "type": "integer"
+                    "type": "string"
                 },
                 "images": {
                     "type": "array",
@@ -1341,6 +1011,35 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "imageUrl": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.PersonWithContact": {
+            "type": "object",
+            "properties": {
+                "contact": {
+                    "$ref": "#/definitions/domain.ContactSummary"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "images": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.PersonImage"
+                    }
+                },
+                "isOwner": {
+                    "type": "boolean"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "role": {
                     "type": "string"
                 }
             }
@@ -1376,23 +1075,6 @@ const docTemplate = `{
                 }
             }
         },
-        "domain.UpdateContactRequest": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "lastName": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "userId": {
-                    "type": "string"
-                }
-            }
-        },
         "domain.UpdateDeviceRequest": {
             "type": "object",
             "properties": {
@@ -1407,10 +1089,22 @@ const docTemplate = `{
                 }
             }
         },
-        "domain.UpdatePersonRequest": {
+        "domain.UpdatePersonWithContactRequest": {
             "type": "object",
             "properties": {
-                "name": {
+                "contact": {
+                    "$ref": "#/definitions/domain.ContactUpdateInput"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "images": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "lastName": {
                     "type": "string"
                 },
                 "role": {
@@ -1463,7 +1157,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "Secure Home Gateway API",
-	Description:      "IoT gateway for the Secure Home project — routes microcontroller events to the detection service.",
+	Description:      "App gateway for the Secure Home project — routes microcontroller events to the detection service.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

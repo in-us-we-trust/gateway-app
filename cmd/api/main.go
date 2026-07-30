@@ -16,7 +16,7 @@ import (
 
 // @title           Secure Home Gateway API
 // @version         1.0
-// @description     IoT gateway for the Secure Home project — routes microcontroller events to the detection service.
+// @description     App gateway for the Secure Home project — routes microcontroller events to the detection service.
 // @host            localhost:8080
 // @BasePath        /
 // @securityDefinitions.apikey BearerAuth
@@ -47,11 +47,6 @@ func main() {
 		detectorClient,
 	)
 
-	contactService := service.NewContactService(
-		userClient,
-		detectorClient,
-	)
-
 	authService := service.NewAuthService(
 		userClient,
 		authClient,
@@ -59,7 +54,6 @@ func main() {
 
 	deviceHandler := handlers.NewDeviceHandler(deviceService)
 	personHandler := handlers.NewPersonHandler(personService)
-	contactHandler := handlers.NewContactHandler(contactService)
 	authHandler := handlers.NewAuthHandler(authService)
 
 	router := gin.Default()
@@ -105,14 +99,7 @@ func main() {
 		protected.PATCH("/me/device/persons/:personId", personHandler.UpdatePerson)
 		protected.DELETE("/me/device/persons/:personId", personHandler.DeletePerson)
 		protected.POST("/me/device/persons/:personId/images", personHandler.AddPersonImages)
-		protected.GET("/me/device/persons/:personId/face-embeddings", personHandler.GetFaceEmbeddings)
 		protected.DELETE("/me/device/persons/:personId/images/:imageId", personHandler.DeletePersonImage)
-
-		protected.GET("/me/device/contacts", contactHandler.ListContacts)
-		protected.GET("/me/device/contacts/:contactId", contactHandler.GetContactByID)
-		protected.POST("/me/device/contacts", contactHandler.CreateContact)
-		protected.PATCH("/me/device/contacts/:contactId", contactHandler.UpdateContact)
-		protected.DELETE("/me/device/contacts/:contactId", contactHandler.DeleteContact)
 	}
 
 	log.Printf("starting server on :%s", cfg.Port)

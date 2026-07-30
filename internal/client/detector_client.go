@@ -70,12 +70,6 @@ type DetectorClient interface {
 		req domain.AddPersonImagesRequest,
 	) (*domain.Person, error)
 
-	GetFaceEmbeddings(
-		ctx context.Context,
-		deviceID string,
-		personID string,
-	) (*[]domain.FaceEmbedding, error)
-
 	DeletePersonImage(
 		ctx context.Context,
 		deviceID string,

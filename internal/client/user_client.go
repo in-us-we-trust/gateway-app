@@ -21,6 +21,7 @@ type UserClient interface {
 		ctx context.Context,
 		userID string,
 	) error
+
 	CreateUser(
 		ctx context.Context,
 		req domain.CreateUserRequest,
@@ -30,11 +31,13 @@ type UserClient interface {
 		ctx context.Context,
 		email string,
 	) (*domain.UserDetail, error)
+
 	RegisterPushToken(
 		ctx context.Context,
 		userID string,
 		req domain.RegisterPushTokenRequest,
 	) (*domain.AppDeviceResponse, error)
+
 	DeletePushToken(
 		ctx context.Context,
 		userID string,
@@ -52,22 +55,22 @@ type UserClient interface {
 		req domain.CreateContactRequest,
 	) (*domain.Contact, error)
 
-	UpdateContact(
+	GetContactByPersonID(
 		ctx context.Context,
 		deviceID string,
-		contactID string,
+		personID string,
+	) (*domain.Contact, error)
+
+	UpdateContactByPersonID(
+		ctx context.Context,
+		deviceID string,
+		personID string,
 		req domain.UpdateContactRequest,
 	) (*domain.Contact, error)
 
-	DeleteContact(
+	DeleteContactByPersonID(
 		ctx context.Context,
 		deviceID string,
-		contactID string,
+		personID string,
 	) error
-
-	GetContactByID(
-		ctx context.Context,
-		deviceID string,
-		contactID string,
-	) (*domain.Contact, error)
 }

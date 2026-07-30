@@ -20,12 +20,12 @@ import (
 )
 
 const (
-	testPersonID = "1"
+	testPersonID = "person-uuid-1"
 	testImageID  = "5"
 )
 
 var testPerson = domain.Person{
-	ID:       1,
+	ID:       testPersonID,
 	DeviceID: testDeviceID,
 	Name:     "Juan Perez",
 	Role:     "Cuidador",
@@ -34,8 +34,15 @@ var testPerson = domain.Person{
 	},
 }
 
-var testFaceEmbeddings = []domain.FaceEmbedding{
-	{ID: 1, PersonID: 1, Vector: []float64{0.1, 0.2, 0.3}, CreatedAt: "2026-06-27T17:00:00Z"},
+var testPersonContact = domain.Contact{
+	ContactId: "contact-uuid-1",
+	PersonId:  testPersonID,
+	UserId:    "user-uuid-1",
+	Name:      "Juan",
+	LastName:  "Perez",
+	Email:     "juan@example.com",
+	Cellphone: "+5491123456789",
+	IsOwner:   false,
 }
 
 func setupPersonRouter(usersURL, detectiveURL string) *gin.Engine {
@@ -56,7 +63,6 @@ func setupPersonRouter(usersURL, detectiveURL string) *gin.Engine {
 		protected.PATCH("/me/device/persons/:personId", personHandler.UpdatePerson)
 		protected.DELETE("/me/device/persons/:personId", personHandler.DeletePerson)
 		protected.POST("/me/device/persons/:personId/images", personHandler.AddPersonImages)
-		protected.GET("/me/device/persons/:personId/face-embeddings", personHandler.GetFaceEmbeddings)
 		protected.DELETE("/me/device/persons/:personId/images/:imageId", personHandler.DeletePersonImage)
 	}
 
@@ -75,8 +81,17 @@ func usersMuxWithDevice(t *testing.T) *http.ServeMux {
 	return mux
 }
 
-func TestListPersons_ReturnsPersons(t *testing.T) {
+func contactEndpoint(personID string) string {
+	return fmt.Sprintf("/devices/%s/persons/%s/contact", testDeviceID, personID)
+}
+
+func contactsListEndpoint() string {
+	return fmt.Sprintf("/devices/%s/contacts", testDeviceID)
+}
+
+func TestListPersons_ReturnsPersonsWithContact(t *testing.T) {
 	persons := []domain.Person{testPerson}
+	contacts := []domain.Contact{testPersonContact}
 
 	detectiveMux := http.NewServeMux()
 	detectiveMux.HandleFunc(fmt.Sprintf("/v1/devices/%s/persons", testDeviceID), func(w http.ResponseWriter, r *http.Request) {
@@ -86,7 +101,16 @@ func TestListPersons_ReturnsPersons(t *testing.T) {
 		w.Write(encodeStdResponse(t, persons))
 	})
 
-	usersSrv := newUsersMock(t, usersMuxWithDevice(t))
+	usersMux := usersMuxWithDevice(t)
+	usersMux.HandleFunc(contactsListEndpoint(), func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		b, _ := json.Marshal(contacts)
+		w.Write(b)
+	})
+
+	usersSrv := newUsersMock(t, usersMux)
 	detectiveSrv := newDetectiveMock(t, detectiveMux)
 
 	router := setupPersonRouter(usersSrv.URL, detectiveSrv.URL)
@@ -105,8 +129,55 @@ func TestListPersons_ReturnsPersons(t *testing.T) {
 
 	require.Len(t, data, 1)
 	first := data[0].(map[string]interface{})
-	assert.Equal(t, "Juan Perez", first["name"])
+	assert.Equal(t, "Juan", first["firstName"])
+	assert.Equal(t, "Perez", first["lastName"])
 	assert.Equal(t, "Cuidador", first["role"])
+
+	contact := first["contact"].(map[string]interface{})
+	assert.Equal(t, "juan@example.com", contact["email"])
+	assert.Equal(t, "+5491123456789", contact["cellphone"])
+}
+
+func TestListPersons_ContactNotFound_ReturnsPersonWithNullContact(t *testing.T) {
+	persons := []domain.Person{testPerson}
+
+	detectiveMux := http.NewServeMux()
+	detectiveMux.HandleFunc(fmt.Sprintf("/v1/devices/%s/persons", testDeviceID), func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(encodeStdResponse(t, persons))
+	})
+
+	usersMux := usersMuxWithDevice(t)
+	usersMux.HandleFunc(contactsListEndpoint(), func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]interface{}{"status": 404, "detail": "no contacts"})
+	})
+
+	usersSrv := newUsersMock(t, usersMux)
+	detectiveSrv := newDetectiveMock(t, detectiveMux)
+
+	router := setupPersonRouter(usersSrv.URL, detectiveSrv.URL)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/me/device/persons", nil)
+	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var respBody map[string]interface{}
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&respBody))
+	data := respBody["data"].([]interface{})
+
+	require.Len(t, data, 1)
+	first := data[0].(map[string]interface{})
+
+	assert.Equal(t, "Juan", first["firstName"])
+	assert.Equal(t, "Perez", first["lastName"])
+	assert.Nil(t, first["contact"])
 }
 
 func TestListPersons_UsersManagerError_ReturnsError(t *testing.T) {
@@ -139,7 +210,8 @@ func TestListPersons_DetectiveManagerError_ReturnsError(t *testing.T) {
 		json.NewEncoder(w).Encode(map[string]interface{}{"detail": "internal error"})
 	})
 
-	usersSrv := newUsersMock(t, usersMuxWithDevice(t))
+	usersMux := usersMuxWithDevice(t)
+	usersSrv := newUsersMock(t, usersMux)
 	detectiveSrv := newDetectiveMock(t, detectiveMux)
 
 	router := setupPersonRouter(usersSrv.URL, detectiveSrv.URL)
@@ -153,7 +225,110 @@ func TestListPersons_DetectiveManagerError_ReturnsError(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
 
-func TestCreatePerson_ReturnsPerson(t *testing.T) {
+func TestGetPerson_ReturnsPersonWithContact(t *testing.T) {
+	detectiveMux := http.NewServeMux()
+	detectiveMux.HandleFunc(fmt.Sprintf("/v1/devices/%s/persons/%s", testDeviceID, testPersonID), func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(encodeStdResponse(t, testPerson))
+	})
+
+	usersMux := usersMuxWithDevice(t)
+	usersMux.HandleFunc(contactEndpoint(testPersonID), func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(testPersonContact)
+	})
+
+	usersSrv := newUsersMock(t, usersMux)
+	detectiveSrv := newDetectiveMock(t, detectiveMux)
+
+	router := setupPersonRouter(usersSrv.URL, detectiveSrv.URL)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/me/device/persons/"+testPersonID, nil)
+	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var respBody map[string]interface{}
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&respBody))
+	data := respBody["data"].(map[string]interface{})
+
+	assert.Equal(t, testPersonID, data["id"])
+	assert.Equal(t, "Juan", data["firstName"])
+	assert.Equal(t, "Perez", data["lastName"])
+
+	contact := data["contact"].(map[string]interface{})
+	assert.Equal(t, "juan@example.com", contact["email"])
+	assert.Equal(t, "+5491123456789", contact["cellphone"])
+	assert.Equal(t, "user-uuid-1", contact["userId"])
+}
+
+func TestGetPerson_ContactNotFound_ReturnsPersonWithNullContact(t *testing.T) {
+	detectiveMux := http.NewServeMux()
+	detectiveMux.HandleFunc(fmt.Sprintf("/v1/devices/%s/persons/%s", testDeviceID, testPersonID), func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(encodeStdResponse(t, testPerson))
+	})
+
+	usersMux := usersMuxWithDevice(t)
+	usersMux.HandleFunc(contactEndpoint(testPersonID), func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]interface{}{"status": 404, "detail": "contact not found"})
+	})
+
+	usersSrv := newUsersMock(t, usersMux)
+	detectiveSrv := newDetectiveMock(t, detectiveMux)
+
+	router := setupPersonRouter(usersSrv.URL, detectiveSrv.URL)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/me/device/persons/"+testPersonID, nil)
+	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var respBody map[string]interface{}
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&respBody))
+	data := respBody["data"].(map[string]interface{})
+
+	assert.Equal(t, "Juan", data["firstName"])
+	assert.Equal(t, "Perez", data["lastName"])
+	assert.Nil(t, data["contact"])
+}
+
+func TestGetPerson_PersonNotFound_ReturnsNotFound(t *testing.T) {
+	detectiveMux := http.NewServeMux()
+	detectiveMux.HandleFunc(fmt.Sprintf("/v1/devices/%s/persons/%s", testDeviceID, testPersonID), func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]interface{}{"detail": "person not found"})
+	})
+
+	usersSrv := newUsersMock(t, usersMuxWithDevice(t))
+	detectiveSrv := newDetectiveMock(t, detectiveMux)
+
+	router := setupPersonRouter(usersSrv.URL, detectiveSrv.URL)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/me/device/persons/"+testPersonID, nil)
+	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestCreatePerson_PropagatesPersonIdToContact(t *testing.T) {
 	detectiveMux := http.NewServeMux()
 	detectiveMux.HandleFunc(fmt.Sprintf("/v1/devices/%s/persons", testDeviceID), func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodPost, r.Method)
@@ -168,15 +343,39 @@ func TestCreatePerson_ReturnsPerson(t *testing.T) {
 		w.Write(encodeStdResponse(t, testPerson))
 	})
 
-	usersSrv := newUsersMock(t, usersMuxWithDevice(t))
+	usersMux := usersMuxWithDevice(t)
+	usersMux.HandleFunc(contactsListEndpoint(), func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+
+		var req domain.CreateContactRequest
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
+
+		assert.Equal(t, testPersonID, req.PersonId)
+		assert.Equal(t, "Juan", req.Name)
+		assert.Equal(t, "Perez", req.LastName)
+		assert.Equal(t, "juan@example.com", req.Email)
+		assert.Equal(t, "+5491123456789", req.Cellphone)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(testPersonContact)
+	})
+
+	usersSrv := newUsersMock(t, usersMux)
 	detectiveSrv := newDetectiveMock(t, detectiveMux)
 
 	router := setupPersonRouter(usersSrv.URL, detectiveSrv.URL)
 
-	reqBody, _ := json.Marshal(domain.CreatePersonRequest{
-		Name:   "Juan Perez",
-		Role:   "Cuidador",
-		Images: []string{"base64img1"},
+	reqBody, _ := json.Marshal(domain.CreatePersonWithContactRequest{
+		FirstName: "Juan",
+		LastName:  "Perez",
+		Role:      "Cuidador",
+		Images:    []string{"base64img1", "base64img2", "base64img3"},
+		Contact: domain.ContactCreateInput{
+			Email:     "juan@example.com",
+			Cellphone: "+5491123456789",
+			UserId:    "user-uuid-1",
+		},
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/me/device/persons", bytes.NewBuffer(reqBody))
 	req.Header.Set("Content-Type", "application/json")
@@ -191,14 +390,36 @@ func TestCreatePerson_ReturnsPerson(t *testing.T) {
 	require.NoError(t, json.NewDecoder(w.Body).Decode(&respBody))
 	data := respBody["data"].(map[string]interface{})
 
-	assert.Equal(t, "Juan Perez", data["name"])
+	assert.Equal(t, "Juan", data["firstName"])
+	assert.Equal(t, "Perez", data["lastName"])
 	assert.Equal(t, "Cuidador", data["role"])
+	assert.NotNil(t, data["contact"])
 }
 
 func TestCreatePerson_InvalidBody_ReturnsBadRequest(t *testing.T) {
 	router := setupPersonRouter("http://unused", "http://unused")
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/me/device/persons", bytes.NewBufferString("not-json"))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestCreatePerson_TooFewImages_ReturnsBadRequest(t *testing.T) {
+	router := setupPersonRouter("http://unused", "http://unused")
+
+	reqBody, _ := json.Marshal(domain.CreatePersonWithContactRequest{
+		FirstName: "Juan",
+		LastName:  "Perez",
+		Role:      "Cuidador",
+		Images:    []string{"only-one"},
+		Contact:   domain.ContactCreateInput{Email: "a@b.com"},
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/me/device/persons", bytes.NewBuffer(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
 
@@ -221,7 +442,13 @@ func TestCreatePerson_DetectiveManagerError_ReturnsError(t *testing.T) {
 
 	router := setupPersonRouter(usersSrv.URL, detectiveSrv.URL)
 
-	reqBody, _ := json.Marshal(domain.CreatePersonRequest{Name: "Juan", Role: "Cuidador"})
+	reqBody, _ := json.Marshal(domain.CreatePersonWithContactRequest{
+		FirstName: "Juan",
+		LastName:  "Perez",
+		Role:      "Cuidador",
+		Images:    []string{"img1", "img2", "img3"},
+		Contact:   domain.ContactCreateInput{Email: "a@b.com"},
+	})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/me/device/persons", bytes.NewBuffer(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
@@ -232,62 +459,16 @@ func TestCreatePerson_DetectiveManagerError_ReturnsError(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
-func TestGetPerson_ReturnsPerson(t *testing.T) {
-	detectiveMux := http.NewServeMux()
-	detectiveMux.HandleFunc(fmt.Sprintf("/v1/devices/%s/persons/%s", testDeviceID, testPersonID), func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(encodeStdResponse(t, testPerson))
-	})
+func TestUpdatePerson_UpdatesPersonAndContact(t *testing.T) {
+	newFirstName := "Juan Updated"
+	newEmail := "updated@example.com"
 
-	usersSrv := newUsersMock(t, usersMuxWithDevice(t))
-	detectiveSrv := newDetectiveMock(t, detectiveMux)
+	updatedPerson := testPerson
+	updatedPerson.Name = newFirstName
 
-	router := setupPersonRouter(usersSrv.URL, detectiveSrv.URL)
-
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/me/device/persons/"+testPersonID, nil)
-	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
-
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-
-	require.Equal(t, http.StatusOK, w.Code)
-
-	var respBody map[string]interface{}
-	require.NoError(t, json.NewDecoder(w.Body).Decode(&respBody))
-	data := respBody["data"].(map[string]interface{})
-
-	assert.Equal(t, "Juan Perez", data["name"])
-	assert.Equal(t, float64(1), data["id"])
-}
-
-func TestGetPerson_DetectiveManagerError_ReturnsError(t *testing.T) {
-	detectiveMux := http.NewServeMux()
-	detectiveMux.HandleFunc(fmt.Sprintf("/v1/devices/%s/persons/%s", testDeviceID, testPersonID), func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]interface{}{"detail": "person not found"})
-	})
-
-	usersSrv := newUsersMock(t, usersMuxWithDevice(t))
-	detectiveSrv := newDetectiveMock(t, detectiveMux)
-
-	router := setupPersonRouter(usersSrv.URL, detectiveSrv.URL)
-
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/me/device/persons/"+testPersonID, nil)
-	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
-
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusNotFound, w.Code)
-}
-
-func TestUpdatePerson_ReturnsUpdatedPerson(t *testing.T) {
-	newName := "Juan Updated"
-	updated := testPerson
-	updated.Name = newName
+	updatedContact := testPersonContact
+	updatedContact.Name = newFirstName
+	updatedContact.Email = newEmail
 
 	detectiveMux := http.NewServeMux()
 	detectiveMux.HandleFunc(fmt.Sprintf("/v1/devices/%s/persons/%s", testDeviceID, testPersonID), func(w http.ResponseWriter, r *http.Request) {
@@ -295,19 +476,39 @@ func TestUpdatePerson_ReturnsUpdatedPerson(t *testing.T) {
 
 		var req domain.UpdatePersonRequest
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
-		assert.Equal(t, &newName, req.Name)
+		assert.Equal(t, newFirstName, *req.Name)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write(encodeStdResponse(t, updated))
+		w.Write(encodeStdResponse(t, updatedPerson))
 	})
 
-	usersSrv := newUsersMock(t, usersMuxWithDevice(t))
+	usersMux := usersMuxWithDevice(t)
+	usersMux.HandleFunc(contactEndpoint(testPersonID), func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPatch, r.Method)
+
+		var req domain.UpdateContactRequest
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
+		assert.Equal(t, newEmail, *req.Email)
+
+		assert.Equal(t, newFirstName, *req.Name)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(updatedContact)
+	})
+
+	usersSrv := newUsersMock(t, usersMux)
 	detectiveSrv := newDetectiveMock(t, detectiveMux)
 
 	router := setupPersonRouter(usersSrv.URL, detectiveSrv.URL)
 
-	reqBody, _ := json.Marshal(domain.UpdatePersonRequest{Name: &newName})
+	reqBody, _ := json.Marshal(domain.UpdatePersonWithContactRequest{
+		FirstName: &newFirstName,
+		Contact: &domain.ContactUpdateInput{
+			Email: &newEmail,
+		},
+	})
 	req := httptest.NewRequest(http.MethodPatch, "/api/v1/me/device/persons/"+testPersonID, bytes.NewBuffer(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
@@ -321,7 +522,10 @@ func TestUpdatePerson_ReturnsUpdatedPerson(t *testing.T) {
 	require.NoError(t, json.NewDecoder(w.Body).Decode(&respBody))
 	data := respBody["data"].(map[string]interface{})
 
-	assert.Equal(t, newName, data["name"])
+	assert.Equal(t, "Juan Updated", data["firstName"])
+
+	contact := data["contact"].(map[string]interface{})
+	assert.Equal(t, newEmail, contact["email"])
 }
 
 func TestUpdatePerson_InvalidBody_ReturnsBadRequest(t *testing.T) {
@@ -337,17 +541,25 @@ func TestUpdatePerson_InvalidBody_ReturnsBadRequest(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
-func TestDeletePerson_ReturnsNoContent(t *testing.T) {
-	deleteCalled := false
+func TestDeletePerson_DeletesBothPersonAndContact(t *testing.T) {
+	personDeleted := false
+	contactDeleted := false
 
 	detectiveMux := http.NewServeMux()
 	detectiveMux.HandleFunc(fmt.Sprintf("/v1/devices/%s/persons/%s", testDeviceID, testPersonID), func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodDelete, r.Method)
-		deleteCalled = true
+		personDeleted = true
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	usersSrv := newUsersMock(t, usersMuxWithDevice(t))
+	usersMux := usersMuxWithDevice(t)
+	usersMux.HandleFunc(contactEndpoint(testPersonID), func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodDelete, r.Method)
+		contactDeleted = true
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	usersSrv := newUsersMock(t, usersMux)
 	detectiveSrv := newDetectiveMock(t, detectiveMux)
 
 	router := setupPersonRouter(usersSrv.URL, detectiveSrv.URL)
@@ -359,18 +571,24 @@ func TestDeletePerson_ReturnsNoContent(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusNoContent, w.Code)
-	assert.True(t, deleteCalled)
+	assert.True(t, personDeleted)
+	assert.True(t, contactDeleted)
 }
 
-func TestDeletePerson_DetectiveManagerError_ReturnsError(t *testing.T) {
+func TestDeletePerson_ContactNotFound_ReturnsNoContent(t *testing.T) {
 	detectiveMux := http.NewServeMux()
 	detectiveMux.HandleFunc(fmt.Sprintf("/v1/devices/%s/persons/%s", testDeviceID, testPersonID), func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]interface{}{"detail": "person not found"})
+		w.WriteHeader(http.StatusNoContent)
 	})
 
-	usersSrv := newUsersMock(t, usersMuxWithDevice(t))
+	usersMux := usersMuxWithDevice(t)
+	usersMux.HandleFunc(contactEndpoint(testPersonID), func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]interface{}{"status": 404, "detail": "contact not found"})
+	})
+
+	usersSrv := newUsersMock(t, usersMux)
 	detectiveSrv := newDetectiveMock(t, detectiveMux)
 
 	router := setupPersonRouter(usersSrv.URL, detectiveSrv.URL)
@@ -381,7 +599,64 @@ func TestDeletePerson_DetectiveManagerError_ReturnsError(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	assert.Equal(t, http.StatusNoContent, w.Code)
+}
+
+func TestDeletePerson_PersonNotFound_ReturnsNoContent(t *testing.T) {
+	detectiveMux := http.NewServeMux()
+	detectiveMux.HandleFunc(fmt.Sprintf("/v1/devices/%s/persons/%s", testDeviceID, testPersonID), func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]interface{}{"detail": "person not found"})
+	})
+
+	contactDeleted := false
+	usersMux := usersMuxWithDevice(t)
+	usersMux.HandleFunc(contactEndpoint(testPersonID), func(w http.ResponseWriter, r *http.Request) {
+		contactDeleted = true
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	usersSrv := newUsersMock(t, usersMux)
+	detectiveSrv := newDetectiveMock(t, detectiveMux)
+
+	router := setupPersonRouter(usersSrv.URL, detectiveSrv.URL)
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/me/device/persons/"+testPersonID, nil)
+	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNoContent, w.Code)
+	assert.True(t, contactDeleted)
+}
+
+func TestDeletePerson_PersonNonNotFoundError_ReturnsError(t *testing.T) {
+	detectiveMux := http.NewServeMux()
+	detectiveMux.HandleFunc(fmt.Sprintf("/v1/devices/%s/persons/%s", testDeviceID, testPersonID), func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"detail": "internal error"})
+	})
+
+	usersMux := usersMuxWithDevice(t)
+	usersMux.HandleFunc(contactEndpoint(testPersonID), func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	usersSrv := newUsersMock(t, usersMux)
+	detectiveSrv := newDetectiveMock(t, detectiveMux)
+
+	router := setupPersonRouter(usersSrv.URL, detectiveSrv.URL)
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/me/device/persons/"+testPersonID, nil)
+	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
 
 func TestAddPersonImages_ReturnsUpdatedPerson(t *testing.T) {
@@ -435,59 +710,6 @@ func TestAddPersonImages_InvalidBody_ReturnsBadRequest(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
-}
-
-func TestGetFaceEmbeddings_ReturnsEmbeddings(t *testing.T) {
-	detectiveMux := http.NewServeMux()
-	detectiveMux.HandleFunc(fmt.Sprintf("/v1/devices/%s/persons/%s/face-embeddings", testDeviceID, testPersonID), func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(encodeStdResponse(t, testFaceEmbeddings))
-	})
-
-	usersSrv := newUsersMock(t, usersMuxWithDevice(t))
-	detectiveSrv := newDetectiveMock(t, detectiveMux)
-
-	router := setupPersonRouter(usersSrv.URL, detectiveSrv.URL)
-
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/me/device/persons/"+testPersonID+"/face-embeddings", nil)
-	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
-
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-
-	require.Equal(t, http.StatusOK, w.Code)
-
-	var respBody map[string]interface{}
-	require.NoError(t, json.NewDecoder(w.Body).Decode(&respBody))
-	data := respBody["data"].([]interface{})
-
-	require.Len(t, data, 1)
-	first := data[0].(map[string]interface{})
-	assert.Equal(t, float64(1), first["id"])
-}
-
-func TestGetFaceEmbeddings_DetectiveManagerError_ReturnsError(t *testing.T) {
-	detectiveMux := http.NewServeMux()
-	detectiveMux.HandleFunc(fmt.Sprintf("/v1/devices/%s/persons/%s/face-embeddings", testDeviceID, testPersonID), func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]interface{}{"detail": "person not found"})
-	})
-
-	usersSrv := newUsersMock(t, usersMuxWithDevice(t))
-	detectiveSrv := newDetectiveMock(t, detectiveMux)
-
-	router := setupPersonRouter(usersSrv.URL, detectiveSrv.URL)
-
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/me/device/persons/"+testPersonID+"/face-embeddings", nil)
-	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
-
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
 func TestDeletePersonImage_ReturnsNoContent(t *testing.T) {
