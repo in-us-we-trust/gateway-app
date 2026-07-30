@@ -30,52 +30,54 @@ definitions:
     required:
     - images
     type: object
-  domain.Contact:
+  domain.ContactCreateInput:
     properties:
-      contactId:
+      cellphone:
         type: string
       email:
-        type: string
-      isOwner:
-        type: boolean
-      lastName:
-        type: string
-      name:
-        type: string
-      notificationTokens:
-        items:
-          $ref: '#/definitions/domain.NotificationToken'
-        type: array
-      userId:
-        type: string
-    type: object
-  domain.CreateContactRequest:
-    properties:
-      email:
-        type: string
-      lastName:
-        type: string
-      name:
         type: string
       userId:
         type: string
     required:
     - email
-    - lastName
-    - name
     type: object
-  domain.CreatePersonRequest:
+  domain.ContactSummary:
     properties:
+      cellphone:
+        type: string
+      email:
+        type: string
+      userId:
+        type: string
+    type: object
+  domain.ContactUpdateInput:
+    properties:
+      cellphone:
+        type: string
+      email:
+        type: string
+      userId:
+        type: string
+    type: object
+  domain.CreatePersonWithContactRequest:
+    properties:
+      contact:
+        $ref: '#/definitions/domain.ContactCreateInput'
+      firstName:
+        type: string
       images:
         items:
           type: string
+        minItems: 3
         type: array
-      name:
+      lastName:
         type: string
       role:
         type: string
     required:
-    - name
+    - firstName
+    - images
+    - lastName
     - role
     type: object
   domain.DeviceResponseDto:
@@ -127,19 +129,6 @@ definitions:
           $ref: '#/definitions/domain.Event'
         type: array
     type: object
-  domain.FaceEmbedding:
-    properties:
-      createdAt:
-        type: string
-      id:
-        type: integer
-      personId:
-        type: integer
-      vector:
-        items:
-          type: number
-        type: array
-    type: object
   domain.LinkDeviceRequest:
     properties:
       deviceId:
@@ -166,23 +155,12 @@ definitions:
       data:
         $ref: '#/definitions/domain.LoginData'
     type: object
-  domain.NotificationToken:
-    properties:
-      appDeviceId:
-        type: integer
-      deviceName:
-        type: string
-      platform:
-        type: string
-      token:
-        type: string
-    type: object
   domain.Person:
     properties:
       deviceId:
         type: string
       id:
-        type: integer
+        type: string
       images:
         items:
           $ref: '#/definitions/domain.PersonImage'
@@ -197,6 +175,25 @@ definitions:
       id:
         type: integer
       imageUrl:
+        type: string
+    type: object
+  domain.PersonWithContact:
+    properties:
+      contact:
+        $ref: '#/definitions/domain.ContactSummary'
+      firstName:
+        type: string
+      id:
+        type: string
+      images:
+        items:
+          $ref: '#/definitions/domain.PersonImage'
+        type: array
+      isOwner:
+        type: boolean
+      lastName:
+        type: string
+      role:
         type: string
     type: object
   domain.RegisterPushTokenRequest:
@@ -219,17 +216,6 @@ definitions:
       password:
         type: string
     type: object
-  domain.UpdateContactRequest:
-    properties:
-      email:
-        type: string
-      lastName:
-        type: string
-      name:
-        type: string
-      userId:
-        type: string
-    type: object
   domain.UpdateDeviceRequest:
     properties:
       city:
@@ -239,9 +225,17 @@ definitions:
       location:
         type: string
     type: object
-  domain.UpdatePersonRequest:
+  domain.UpdatePersonWithContactRequest:
     properties:
-      name:
+      contact:
+        $ref: '#/definitions/domain.ContactUpdateInput'
+      firstName:
+        type: string
+      images:
+        items:
+          type: string
+        type: array
+      lastName:
         type: string
       role:
         type: string
@@ -267,7 +261,7 @@ definitions:
 host: localhost:8080
 info:
   contact: {}
-  description: IoT gateway for the Secure Home project — routes microcontroller events
+  description: App gateway for the Secure Home project — routes microcontroller events
     to the detection service.
   title: Secure Home Gateway API
   version: "1.0"
@@ -436,161 +430,6 @@ paths:
       summary: Link device to authenticated user
       tags:
       - users
-  /api/v1/me/device/contacts:
-    get:
-      description: Returns all contacts registered on the authenticated user's linked
-        device
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/domain.Contact'
-            type: array
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/apierror.APIError'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/apierror.APIError'
-      security:
-      - BearerAuth: []
-      summary: List contacts for authenticated user's device
-      tags:
-      - contacts
-    post:
-      consumes:
-      - application/json
-      description: Adds a secondary contact to the linked device
-      parameters:
-      - description: Contact payload
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/domain.CreateContactRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/domain.Contact'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/apierror.APIError'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/apierror.APIError'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/apierror.APIError'
-      security:
-      - BearerAuth: []
-      summary: Create a contact on the authenticated user's device
-      tags:
-      - contacts
-  /api/v1/me/device/contacts/{contactId}:
-    delete:
-      description: Removes a registered contact
-      parameters:
-      - description: Contact ID
-        in: path
-        name: contactId
-        required: true
-        type: string
-      responses:
-        "204":
-          description: No Content
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/apierror.APIError'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/apierror.APIError'
-      security:
-      - BearerAuth: []
-      summary: Delete a contact from the authenticated user's device
-      tags:
-      - contacts
-    get:
-      description: Returns a single contact associated with the authenticated user's
-        device
-      parameters:
-      - description: Contact ID
-        in: path
-        name: contactId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/domain.Contact'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/apierror.APIError'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/apierror.APIError'
-      security:
-      - BearerAuth: []
-      summary: Get a specific contact by ID
-      tags:
-      - contacts
-    patch:
-      consumes:
-      - application/json
-      description: Updates contact information for a registered contact
-      parameters:
-      - description: Contact ID
-        in: path
-        name: contactId
-        required: true
-        type: string
-      - description: Fields to update
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/domain.UpdateContactRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/domain.Contact'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/apierror.APIError'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/apierror.APIError'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/apierror.APIError'
-      security:
-      - BearerAuth: []
-      summary: Partially update a contact on the authenticated user's device
-      tags:
-      - contacts
   /api/v1/me/device/events:
     get:
       description: Returns all events associated with the authenticated user's linked
@@ -621,8 +460,8 @@ paths:
       - users
   /api/v1/me/device/persons:
     get:
-      description: Returns all persons registered on the authenticated user's linked
-        device
+      description: Returns all persons with their contact info registered on the authenticated
+        user's linked device
       produces:
       - application/json
       responses:
@@ -630,7 +469,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/domain.Person'
+              $ref: '#/definitions/domain.PersonWithContact'
             type: array
         "401":
           description: Unauthorized
@@ -648,22 +487,22 @@ paths:
     post:
       consumes:
       - application/json
-      description: Registers a new person with optional face images on the linked
-        device
+      description: Registers a new person with face images and contact information
+        on the linked device
       parameters:
-      - description: Person payload
+      - description: Person with contact payload
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/domain.CreatePersonRequest'
+          $ref: '#/definitions/domain.CreatePersonWithContactRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/domain.Person'
+            $ref: '#/definitions/domain.PersonWithContact'
         "400":
           description: Bad Request
           schema:
@@ -678,12 +517,13 @@ paths:
             $ref: '#/definitions/apierror.APIError'
       security:
       - BearerAuth: []
-      summary: Create a person on the authenticated user's device
+      summary: Create a person with contact on the authenticated user's device
       tags:
       - persons
   /api/v1/me/device/persons/{personId}:
     delete:
-      description: Removes a registered person and their associated data
+      description: Removes a registered person and their associated contact; NotFound
+        from either service is tolerated
       parameters:
       - description: Person ID
         in: path
@@ -697,17 +537,14 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/apierror.APIError'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/apierror.APIError'
       security:
       - BearerAuth: []
-      summary: Delete a person from the authenticated user's device
+      summary: Delete a person and their contact from the authenticated user's device
       tags:
       - persons
     get:
-      description: Returns a single person registered on the linked device
+      description: Returns a single person with their contact info registered on the
+        linked device
       parameters:
       - description: Person ID
         in: path
@@ -720,7 +557,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/domain.Person'
+            $ref: '#/definitions/domain.PersonWithContact'
         "401":
           description: Unauthorized
           schema:
@@ -737,7 +574,7 @@ paths:
     patch:
       consumes:
       - application/json
-      description: Updates the name and/or role of a registered person
+      description: Updates person and/or contact fields; all fields are optional
       parameters:
       - description: Person ID
         in: path
@@ -749,14 +586,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/domain.UpdatePersonRequest'
+          $ref: '#/definitions/domain.UpdatePersonWithContactRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/domain.Person'
+            $ref: '#/definitions/domain.PersonWithContact'
         "400":
           description: Bad Request
           schema:
@@ -771,38 +608,8 @@ paths:
             $ref: '#/definitions/apierror.APIError'
       security:
       - BearerAuth: []
-      summary: Partially update a person on the authenticated user's device
-      tags:
-      - persons
-  /api/v1/me/device/persons/{personId}/face-embeddings:
-    get:
-      description: Returns the face embedding vectors stored for a registered person
-      parameters:
-      - description: Person ID
-        in: path
-        name: personId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/domain.FaceEmbedding'
-            type: array
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/apierror.APIError'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/apierror.APIError'
-      security:
-      - BearerAuth: []
-      summary: Get face embeddings for a person
+      summary: Partially update a person and their contact on the authenticated user's
+        device
       tags:
       - persons
   /api/v1/me/device/persons/{personId}/images:

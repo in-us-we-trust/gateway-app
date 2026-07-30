@@ -22,11 +22,11 @@ func NewPersonHandler(svc service.PersonService) *PersonHandler {
 
 // ListPersons godoc
 // @Summary List persons for authenticated user's device
-// @Description Returns all persons registered on the authenticated user's linked device
+// @Description Returns all persons with their contact info registered on the authenticated user's linked device
 // @Tags persons
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} []domain.Person
+// @Success 200 {object} []domain.PersonWithContact
 // @Failure 401 {object} apierror.APIError
 // @Failure 404 {object} apierror.APIError
 // @Router /api/v1/me/device/persons [get]
@@ -43,24 +43,24 @@ func (h *PersonHandler) ListPersons(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, domain.StandardResponse[*[]domain.Person]{Data: resp})
+	c.JSON(http.StatusOK, domain.StandardResponse[*[]domain.PersonWithContact]{Data: resp})
 }
 
 // CreatePerson godoc
-// @Summary Create a person on the authenticated user's device
-// @Description Registers a new person with optional face images on the linked device
+// @Summary Create a person with contact on the authenticated user's device
+// @Description Registers a new person with face images and contact information on the linked device
 // @Tags persons
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param request body domain.CreatePersonRequest true "Person payload"
-// @Success 200 {object} domain.Person
+// @Param request body domain.CreatePersonWithContactRequest true "Person with contact payload"
+// @Success 200 {object} domain.PersonWithContact
 // @Failure 400 {object} apierror.APIError
 // @Failure 401 {object} apierror.APIError
 // @Failure 404 {object} apierror.APIError
 // @Router /api/v1/me/device/persons [post]
 func (h *PersonHandler) CreatePerson(c *gin.Context) {
-	var req domain.CreatePersonRequest
+	var req domain.CreatePersonWithContactRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		apierror.Respond(c, apierror.BadRequest(err.Error(), c.Request.URL.Path))
 		return
@@ -78,17 +78,17 @@ func (h *PersonHandler) CreatePerson(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, domain.StandardResponse[*domain.Person]{Data: resp})
+	c.JSON(http.StatusOK, domain.StandardResponse[*domain.PersonWithContact]{Data: resp})
 }
 
 // GetPerson godoc
 // @Summary Get a person by ID from the authenticated user's device
-// @Description Returns a single person registered on the linked device
+// @Description Returns a single person with their contact info registered on the linked device
 // @Tags persons
 // @Produce json
 // @Security BearerAuth
 // @Param personId path string true "Person ID"
-// @Success 200 {object} domain.Person
+// @Success 200 {object} domain.PersonWithContact
 // @Failure 401 {object} apierror.APIError
 // @Failure 404 {object} apierror.APIError
 // @Router /api/v1/me/device/persons/{personId} [get]
@@ -107,25 +107,25 @@ func (h *PersonHandler) GetPerson(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, domain.StandardResponse[*domain.Person]{Data: resp})
+	c.JSON(http.StatusOK, domain.StandardResponse[*domain.PersonWithContact]{Data: resp})
 }
 
 // UpdatePerson godoc
-// @Summary Partially update a person on the authenticated user's device
-// @Description Updates the name and/or role of a registered person
+// @Summary Partially update a person and their contact on the authenticated user's device
+// @Description Updates person and/or contact fields; all fields are optional
 // @Tags persons
 // @Accept json
 // @Produce json
 // @Security BearerAuth
 // @Param personId path string true "Person ID"
-// @Param request body domain.UpdatePersonRequest true "Fields to update"
-// @Success 200 {object} domain.Person
+// @Param request body domain.UpdatePersonWithContactRequest true "Fields to update"
+// @Success 200 {object} domain.PersonWithContact
 // @Failure 400 {object} apierror.APIError
 // @Failure 401 {object} apierror.APIError
 // @Failure 404 {object} apierror.APIError
 // @Router /api/v1/me/device/persons/{personId} [patch]
 func (h *PersonHandler) UpdatePerson(c *gin.Context) {
-	var req domain.UpdatePersonRequest
+	var req domain.UpdatePersonWithContactRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		apierror.Respond(c, apierror.BadRequest(err.Error(), c.Request.URL.Path))
 		return
@@ -145,18 +145,17 @@ func (h *PersonHandler) UpdatePerson(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, domain.StandardResponse[*domain.Person]{Data: resp})
+	c.JSON(http.StatusOK, domain.StandardResponse[*domain.PersonWithContact]{Data: resp})
 }
 
 // DeletePerson godoc
-// @Summary Delete a person from the authenticated user's device
-// @Description Removes a registered person and their associated data
+// @Summary Delete a person and their contact from the authenticated user's device
+// @Description Removes a registered person and their associated contact; NotFound from either service is tolerated
 // @Tags persons
 // @Security BearerAuth
 // @Param personId path string true "Person ID"
 // @Success 204
 // @Failure 401 {object} apierror.APIError
-// @Failure 404 {object} apierror.APIError
 // @Router /api/v1/me/device/persons/{personId} [delete]
 func (h *PersonHandler) DeletePerson(c *gin.Context) {
 	claims, ok := requestctx.Claims(c.Request.Context())
@@ -211,35 +210,6 @@ func (h *PersonHandler) AddPersonImages(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, domain.StandardResponse[*domain.Person]{Data: resp})
-}
-
-// GetFaceEmbeddings godoc
-// @Summary Get face embeddings for a person
-// @Description Returns the face embedding vectors stored for a registered person
-// @Tags persons
-// @Produce json
-// @Security BearerAuth
-// @Param personId path string true "Person ID"
-// @Success 200 {object} []domain.FaceEmbedding
-// @Failure 401 {object} apierror.APIError
-// @Failure 404 {object} apierror.APIError
-// @Router /api/v1/me/device/persons/{personId}/face-embeddings [get]
-func (h *PersonHandler) GetFaceEmbeddings(c *gin.Context) {
-	claims, ok := requestctx.Claims(c.Request.Context())
-	if !ok {
-		h.handleJWTNotPresentError(c)
-		return
-	}
-
-	personID := c.Param("personId")
-
-	resp, err := h.service.GetFaceEmbeddings(c.Request.Context(), claims.User.Id, personID)
-	if err != nil {
-		h.handleServiceError(c, err)
-		return
-	}
-
-	c.JSON(http.StatusOK, domain.StandardResponse[*[]domain.FaceEmbedding]{Data: resp})
 }
 
 // DeletePersonImage godoc

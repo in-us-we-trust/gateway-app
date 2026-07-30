@@ -266,25 +266,6 @@ func (c *HTTPDetectorClient) AddPersonImages(ctx context.Context, deviceID strin
 	return decodeResponse[domain.Person](resp)
 }
 
-func (c *HTTPDetectorClient) GetFaceEmbeddings(ctx context.Context, deviceID string, personID string) (*[]domain.FaceEmbedding, error) {
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/v1/devices/"+deviceID+"/persons/"+personID+"/face-embeddings", nil)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := c.httpClient.Do(httpReq)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, detectiveError(resp)
-	}
-
-	return decodeResponse[[]domain.FaceEmbedding](resp)
-}
-
 func (c *HTTPDetectorClient) DeletePersonImage(ctx context.Context, deviceID string, personID string, imageID string) error {
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodDelete, c.baseURL+"/v1/devices/"+deviceID+"/persons/"+personID+"/images/"+imageID, nil)
 	if err != nil {
