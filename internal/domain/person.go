@@ -57,11 +57,11 @@ type UpdatePersonRequest struct {
 }
 
 type CreatePersonWithContactRequest struct {
-	FirstName string             `json:"firstName" binding:"required"`
-	LastName  string             `json:"lastName" binding:"required"`
-	Role      string             `json:"role" binding:"required"`
-	Images    []string           `json:"images" binding:"required,min=3"`
-	Contact   ContactCreateInput `json:"contact"`
+	FirstName string              `json:"firstName" binding:"required"`
+	LastName  string              `json:"lastName" binding:"required"`
+	Role      string              `json:"role" binding:"required"`
+	Images    []string            `json:"images" binding:"required,min=3"`
+	Contact   *ContactCreateInput `json:"contact"`
 }
 
 type UpdatePersonWithContactRequest struct {

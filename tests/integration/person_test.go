@@ -371,7 +371,7 @@ func TestCreatePerson_PropagatesPersonIdToContact(t *testing.T) {
 		LastName:  "Perez",
 		Role:      "Cuidador",
 		Images:    []string{"base64img1", "base64img2", "base64img3"},
-		Contact: domain.ContactCreateInput{
+		Contact: &domain.ContactCreateInput{
 			Email:     "juan@example.com",
 			Cellphone: "+5491123456789",
 			UserId:    "user-uuid-1",
@@ -417,7 +417,7 @@ func TestCreatePerson_TooFewImages_ReturnsBadRequest(t *testing.T) {
 		LastName:  "Perez",
 		Role:      "Cuidador",
 		Images:    []string{"only-one"},
-		Contact:   domain.ContactCreateInput{Email: "a@b.com"},
+		Contact:   &domain.ContactCreateInput{Email: "a@b.com"},
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/me/device/persons", bytes.NewBuffer(reqBody))
 	req.Header.Set("Content-Type", "application/json")
@@ -447,7 +447,62 @@ func TestCreatePerson_DetectiveManagerError_ReturnsError(t *testing.T) {
 		LastName:  "Perez",
 		Role:      "Cuidador",
 		Images:    []string{"img1", "img2", "img3"},
-		Contact:   domain.ContactCreateInput{Email: "a@b.com"},
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/me/device/persons", bytes.NewBuffer(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestCreatePerson_WithoutContact_ReturnsPersonWithNullContact(t *testing.T) {
+	detectiveMux := http.NewServeMux()
+	detectiveMux.HandleFunc(fmt.Sprintf("/v1/devices/%s/persons", testDeviceID), func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(encodeStdResponse(t, testPerson))
+	})
+
+	usersSrv := newUsersMock(t, usersMuxWithDevice(t))
+	detectiveSrv := newDetectiveMock(t, detectiveMux)
+
+	router := setupPersonRouter(usersSrv.URL, detectiveSrv.URL)
+
+	reqBody, _ := json.Marshal(domain.CreatePersonWithContactRequest{
+		FirstName: "Juan",
+		LastName:  "Perez",
+		Role:      "Cuidador",
+		Images:    []string{"img1", "img2", "img3"},
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/me/device/persons", bytes.NewBuffer(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var respBody map[string]interface{}
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&respBody))
+	data := respBody["data"].(map[string]interface{})
+
+	assert.Equal(t, "Juan", data["firstName"])
+	assert.Nil(t, data["contact"])
+}
+
+func TestCreatePerson_ContactWithoutEmail_ReturnsBadRequest(t *testing.T) {
+	router := setupPersonRouter("http://unused", "http://unused")
+
+	reqBody, _ := json.Marshal(map[string]interface{}{
+		"firstName": "Juan",
+		"lastName":  "Perez",
+		"role":      "Cuidador",
+		"images":    []string{"img1", "img2", "img3"},
+		"contact":   map[string]interface{}{"cellphone": "+54911"},
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/me/device/persons", bytes.NewBuffer(reqBody))
 	req.Header.Set("Content-Type", "application/json")

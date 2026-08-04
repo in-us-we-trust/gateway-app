@@ -129,17 +129,20 @@ func (s *PersonService) CreatePerson(
 		return nil, err
 	}
 
-	contactReq := domain.CreateContactRequest{
-		Name:      req.FirstName,
-		LastName:  req.LastName,
-		Email:     req.Contact.Email,
-		Cellphone: req.Contact.Cellphone,
-		UserId:    req.Contact.UserId,
-		PersonId:  person.ID,
-	}
-	contact, err := s.userClient.CreateContact(ctx, device.DeviceID, contactReq)
-	if err != nil {
-		return nil, err
+	var contact *domain.Contact
+	if req.Contact != nil {
+		contactReq := domain.CreateContactRequest{
+			Name:      req.FirstName,
+			LastName:  req.LastName,
+			Email:     req.Contact.Email,
+			Cellphone: req.Contact.Cellphone,
+			UserId:    req.Contact.UserId,
+			PersonId:  person.ID,
+		}
+		contact, err = s.userClient.CreateContact(ctx, device.DeviceID, contactReq)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return personWithContact(person, contact), nil
