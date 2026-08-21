@@ -107,28 +107,6 @@ definitions:
       uptime:
         type: integer
     type: object
-  domain.Event:
-    properties:
-      deviceId:
-        type: string
-      eventType:
-        type: string
-      id:
-        type: string
-      imageUrl:
-        type: string
-      intruder:
-        type: boolean
-      timestamp:
-        type: string
-    type: object
-  domain.EventsResponse:
-    properties:
-      data:
-        items:
-          $ref: '#/definitions/domain.Event'
-        type: array
-    type: object
   domain.LinkDeviceRequest:
     properties:
       deviceId:
@@ -215,6 +193,49 @@ definitions:
         type: string
       password:
         type: string
+    type: object
+  domain.Track:
+    properties:
+      code:
+        type: string
+      createdAt:
+        type: string
+      finalSeverity:
+        type: string
+      finalVerdict:
+        type: string
+      title:
+        type: string
+      trackId:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  domain.TrackDetail:
+    properties:
+      code:
+        type: string
+      createdAt:
+        type: string
+      finalSeverity:
+        type: string
+      finalVerdict:
+        type: string
+      imageUrl:
+        type: string
+      title:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  domain.TracksResult:
+    properties:
+      events:
+        items:
+          $ref: '#/definitions/domain.Track'
+        type: array
+      urgentEvent:
+        $ref: '#/definitions/domain.Track'
     type: object
   domain.UpdateDeviceRequest:
     properties:
@@ -440,7 +461,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/domain.EventsResponse'
+            $ref: '#/definitions/domain.TracksResult'
         "401":
           description: Unauthorized
           schema:
@@ -456,6 +477,39 @@ paths:
       security:
       - BearerAuth: []
       summary: Get authenticated user's device events
+      tags:
+      - users
+  /api/v1/me/device/events/{trackId}:
+    get:
+      description: Returns the detail of a single track (visit) of the user's device
+      parameters:
+      - description: Track ID
+        in: path
+        name: trackId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.TrackDetail'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apierror.APIError'
+      security:
+      - BearerAuth: []
+      summary: Get authenticated user's device event detail
       tags:
       - users
   /api/v1/me/device/persons:

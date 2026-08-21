@@ -23,8 +23,8 @@ func NewHTTPDetectorClient(baseURL string) *HTTPDetectorClient {
 	}
 }
 
-func (c *HTTPDetectorClient) GetDeviceEvents(ctx context.Context, deviceID string) (*[]domain.Event, error) {
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/v1/devices/"+deviceID+"/events", nil)
+func (c *HTTPDetectorClient) GetDeviceTracks(ctx context.Context, deviceID string) (*[]domain.Track, error) {
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/v1/devices/"+deviceID+"/tracks", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +49,36 @@ func (c *HTTPDetectorClient) GetDeviceEvents(ctx context.Context, deviceID strin
 		}
 	}
 
-	return decodeResponse[[]domain.Event](resp)
+	return decodeResponse[[]domain.Track](resp)
+}
+
+func (c *HTTPDetectorClient) GetTrackDetail(ctx context.Context, deviceID, trackID string) (*domain.TrackDetail, error) {
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/v1/devices/"+deviceID+"/tracks/"+trackID, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var errBody struct {
+			Detail string `json:"detail"`
+		}
+		detail := fmt.Sprintf("detector service returned status %d", resp.StatusCode)
+		if json.NewDecoder(resp.Body).Decode(&errBody) == nil && errBody.Detail != "" {
+			detail = errBody.Detail
+		}
+		return nil, &domain.DetectorError{
+			Code:           domain.ErrCodeDetectorAnalysis,
+			DetectorDetail: detail,
+			StatusCode:     resp.StatusCode,
+		}
+	}
+
+	return decodeResponse[domain.TrackDetail](resp)
 }
 
 func (c *HTTPDetectorClient) ClaimDevice(ctx context.Context, deviceID string) (*domain.DetectiveDevice, error) {

@@ -97,13 +97,74 @@ func (s *DeviceService) UpdateMyDevice(
 func (s *DeviceService) GetMyDeviceEvents(
 	ctx context.Context,
 	userID string,
-) (*[]domain.Event, error) {
+) (*domain.TracksResult, error) {
 	device, err := s.userClient.GetUserDevice(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	return s.detectiveClient.GetDeviceEvents(ctx, device.DeviceID)
+	tracks, err := s.detectiveClient.GetDeviceTracks(ctx, device.DeviceID)
+	if err != nil {
+		return nil, err
+	}
+
+	return splitUrgent(*tracks), nil
+}
+
+func (s *DeviceService) GetMyDeviceEventDetail(
+	ctx context.Context,
+	userID string,
+	trackID string,
+) (*domain.TrackDetail, error) {
+	device, err := s.userClient.GetUserDevice(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.detectiveClient.GetTrackDetail(ctx, device.DeviceID, trackID)
+}
+
+// severityRank ordena las severities. Mayor número = más urgente.
+var severityRank = map[string]int{
+	"NORMAL":     0,
+	"LLAMATIVO":  1,
+	"SOSPECHOSO": 2,
+	"PELIGROSO":  3,
+}
+
+// splitUrgent separa el track más urgente (mayor severity; ante empate, el más
+// reciente por createdAt) del resto. El urgente NO queda en la lista de events.
+func splitUrgent(tracks []domain.Track) *domain.TracksResult {
+	if len(tracks) == 0 {
+		return &domain.TracksResult{UrgentEvent: nil, Events: []domain.Track{}}
+	}
+
+	urgentIdx := 0
+	for i := 1; i < len(tracks); i++ {
+		if isMoreUrgent(tracks[i], tracks[urgentIdx]) {
+			urgentIdx = i
+		}
+	}
+
+	urgent := tracks[urgentIdx]
+	rest := make([]domain.Track, 0, len(tracks)-1)
+	for i, t := range tracks {
+		if i != urgentIdx {
+			rest = append(rest, t)
+		}
+	}
+
+	return &domain.TracksResult{UrgentEvent: &urgent, Events: rest}
+}
+
+// isMoreUrgent: mayor severity gana; ante empate, el createdAt más reciente.
+func isMoreUrgent(candidate, current domain.Track) bool {
+	cRank := severityRank[candidate.FinalSeverity]
+	curRank := severityRank[current.FinalSeverity]
+	if cRank != curRank {
+		return cRank > curRank
+	}
+	return candidate.CreatedAt > current.CreatedAt
 }
 
 func (s *DeviceService) RegisterPushToken(

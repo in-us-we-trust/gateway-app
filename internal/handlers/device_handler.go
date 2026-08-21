@@ -167,7 +167,7 @@ func (h *DeviceHandler) GetMyDevice(c *gin.Context) {
 // @Tags users
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} domain.EventsResponse
+// @Success 200 {object} domain.TracksResult
 // @Failure 401 {object} apierror.APIError
 // @Failure 404 {object} apierror.APIError
 // @Failure 500 {object} apierror.APIError
@@ -190,7 +190,42 @@ func (h *DeviceHandler) GetMyDeviceEvents(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, domain.StandardResponse[*[]domain.Event]{Data: resp})
+	c.JSON(http.StatusOK, domain.StandardResponse[*domain.TracksResult]{Data: resp})
+}
+
+// GetMyDeviceEventDetail godoc
+// @Summary Get authenticated user's device event detail
+// @Description Returns the detail of a single track (visit) of the user's device
+// @Tags users
+// @Produce json
+// @Security BearerAuth
+// @Param trackId path string true "Track ID"
+// @Success 200 {object} domain.TrackDetail
+// @Failure 401 {object} apierror.APIError
+// @Failure 404 {object} apierror.APIError
+// @Failure 500 {object} apierror.APIError
+// @Router /api/v1/me/device/events/{trackId} [get]
+func (h *DeviceHandler) GetMyDeviceEventDetail(c *gin.Context) {
+	claims, ok := requestctx.Claims(c.Request.Context())
+	if !ok {
+		h.handleJWTNotPresentError(c)
+		return
+	}
+
+	trackID := c.Param("trackId")
+
+	resp, err := h.service.GetMyDeviceEventDetail(c.Request.Context(), claims.User.Id, trackID)
+	if err != nil {
+		var detErr *domain.DetectorError
+		if errors.As(err, &detErr) {
+			apierror.Respond(c, apierror.FromDetectorError(detErr.DetectorDetail, c.Request.URL.Path, detErr.Code, detErr.StatusCode))
+			return
+		}
+		apierror.Respond(c, apierror.InternalServerError("failed to process user", c.Request.URL.Path))
+		return
+	}
+
+	c.JSON(http.StatusOK, domain.StandardResponse[*domain.TrackDetail]{Data: resp})
 }
 
 func (h *DeviceHandler) handleJWTNotPresentError(

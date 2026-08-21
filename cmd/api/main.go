@@ -90,6 +90,7 @@ func main() {
 		protected.PATCH("/me/device", deviceHandler.UpdateMyDevice)
 		protected.DELETE("/me/device", deviceHandler.UnlinkMyDevice)
 		protected.GET("/me/device/events", deviceHandler.GetMyDeviceEvents)
+		protected.GET("/me/device/events/:trackId", deviceHandler.GetMyDeviceEventDetail)
 		protected.POST("/me/push-token", deviceHandler.RegisterPushToken)
 		protected.DELETE("/me/push-token/:appDeviceId", deviceHandler.DeletePushToken)
 

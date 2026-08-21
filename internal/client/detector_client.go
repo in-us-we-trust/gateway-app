@@ -7,10 +7,16 @@ import (
 )
 
 type DetectorClient interface {
-	GetDeviceEvents(
+	GetDeviceTracks(
 		ctx context.Context,
 		deviceID string,
-	) (*[]domain.Event, error)
+	) (*[]domain.Track, error)
+
+	GetTrackDetail(
+		ctx context.Context,
+		deviceID string,
+		trackID string,
+	) (*domain.TrackDetail, error)
 
 	ClaimDevice(
 		ctx context.Context,

@@ -284,7 +284,59 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/domain.EventsResponse"
+                            "$ref": "#/definitions/domain.TracksResult"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apierror.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/apierror.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apierror.APIError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/me/device/events/{trackId}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns the detail of a single track (visit) of the user's device",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get authenticated user's device event detail",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Track ID",
+                        "name": "trackId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.TrackDetail"
                         }
                     },
                     "401": {
@@ -900,40 +952,6 @@
                 }
             }
         },
-        "domain.Event": {
-            "type": "object",
-            "properties": {
-                "deviceId": {
-                    "type": "string"
-                },
-                "eventType": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "imageUrl": {
-                    "type": "string"
-                },
-                "intruder": {
-                    "type": "boolean"
-                },
-                "timestamp": {
-                    "type": "string"
-                }
-            }
-        },
-        "domain.EventsResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.Event"
-                    }
-                }
-            }
-        },
         "domain.LinkDeviceRequest": {
             "type": "object",
             "properties": {
@@ -1066,6 +1084,72 @@
                 },
                 "password": {
                     "type": "string"
+                }
+            }
+        },
+        "domain.Track": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "finalSeverity": {
+                    "type": "string"
+                },
+                "finalVerdict": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "trackId": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.TrackDetail": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "finalSeverity": {
+                    "type": "string"
+                },
+                "finalVerdict": {
+                    "type": "string"
+                },
+                "imageUrl": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.TracksResult": {
+            "type": "object",
+            "properties": {
+                "events": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.Track"
+                    }
+                },
+                "urgentEvent": {
+                    "$ref": "#/definitions/domain.Track"
                 }
             }
         },
