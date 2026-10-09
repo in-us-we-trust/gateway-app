@@ -647,9 +647,9 @@ func TestUnlinkDevice_DetectiveManagerUnclaimError_ReturnsError(t *testing.T) {
 }
 
 func TestGetDeviceEvents_ReturnsEvents(t *testing.T) {
-	events := []domain.Event{
-		{ID: "evt-1", DeviceID: testDeviceID, Timestamp: "2026-06-27T18:00:00Z", Intruder: true, ImageURL: "http://img/1.jpg", EventType: "motion"},
-		{ID: "evt-2", DeviceID: testDeviceID, Timestamp: "2026-06-27T19:00:00Z", Intruder: false, ImageURL: "http://img/2.jpg", EventType: "bell"},
+	tracks := []domain.Track{
+		{TrackID: "trk-1", Code: "C1", Title: "Motion", FinalVerdict: "KNOWN", FinalSeverity: "NORMAL", CreatedAt: "2026-06-27T18:00:00Z"},
+		{TrackID: "trk-2", Code: "C2", Title: "Danger", FinalVerdict: "UNKNOWN", FinalSeverity: "PELIGROSO", CreatedAt: "2026-06-27T19:00:00Z"},
 	}
 
 	usersMux := http.NewServeMux()
@@ -660,11 +660,11 @@ func TestGetDeviceEvents_ReturnsEvents(t *testing.T) {
 	})
 
 	detectiveMux := http.NewServeMux()
-	detectiveMux.HandleFunc(fmt.Sprintf("/v1/devices/%s/events", testDeviceID), func(w http.ResponseWriter, r *http.Request) {
+	detectiveMux.HandleFunc(fmt.Sprintf("/v1/devices/%s/tracks", testDeviceID), func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write(encodeStdResponse(t, events))
+		w.Write(encodeStdResponse(t, tracks))
 	})
 
 	usersSrv := newUsersMock(t, usersMux)
@@ -682,12 +682,16 @@ func TestGetDeviceEvents_ReturnsEvents(t *testing.T) {
 
 	var respBody map[string]interface{}
 	require.NoError(t, json.NewDecoder(w.Body).Decode(&respBody))
-	data := respBody["data"].([]interface{})
+	data := respBody["data"].(map[string]interface{})
 
-	require.Len(t, data, 2)
-	first := data[0].(map[string]interface{})
-	assert.Equal(t, "evt-1", first["id"])
-	assert.Equal(t, "motion", first["eventType"])
+	urgent := data["urgentEvent"].(map[string]interface{})
+	assert.Equal(t, "trk-2", urgent["trackId"])
+	assert.Equal(t, "PELIGROSO", urgent["finalSeverity"])
+
+	events := data["events"].([]interface{})
+	require.Len(t, events, 1)
+	first := events[0].(map[string]interface{})
+	assert.Equal(t, "trk-1", first["trackId"])
 }
 
 func TestGetDeviceEvents_UsersManagerError_ReturnsError(t *testing.T) {
@@ -722,7 +726,7 @@ func TestGetDeviceEvents_DetectiveManagerError_ReturnsError(t *testing.T) {
 	})
 
 	detectiveMux := http.NewServeMux()
-	detectiveMux.HandleFunc(fmt.Sprintf("/v1/devices/%s/events", testDeviceID), func(w http.ResponseWriter, r *http.Request) {
+	detectiveMux.HandleFunc(fmt.Sprintf("/v1/devices/%s/tracks", testDeviceID), func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]interface{}{"detail": "events fetch failed"})
