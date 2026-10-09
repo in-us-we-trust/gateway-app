@@ -1193,6 +1193,13 @@ const docTemplate = `{
                 },
                 "role": {
                     "type": "string"
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "KNOWN",
+                        "REJECTED"
+                    ]
                 }
             }
         },
