@@ -52,8 +52,9 @@ type AddPersonImagesRequest struct {
 }
 
 type UpdatePersonRequest struct {
-	Name *string `json:"name,omitempty"`
-	Role *string `json:"role,omitempty"`
+	Name   *string `json:"name,omitempty"`
+	Role   *string `json:"role,omitempty"`
+	Status *string `json:"status,omitempty"`
 }
 
 type CreatePersonWithContactRequest struct {
@@ -68,6 +69,7 @@ type UpdatePersonWithContactRequest struct {
 	FirstName *string             `json:"firstName,omitempty"`
 	LastName  *string             `json:"lastName,omitempty"`
 	Role      *string             `json:"role,omitempty"`
+	Status    *string             `json:"status,omitempty" binding:"omitempty,oneof=KNOWN REJECTED" enums:"KNOWN,REJECTED"`
 	Images    []string            `json:"images,omitempty"`
 	Contact   *ContactUpdateInput `json:"contact,omitempty"`
 }

@@ -260,6 +260,11 @@ definitions:
         type: string
       role:
         type: string
+      status:
+        enum:
+        - KNOWN
+        - REJECTED
+        type: string
     type: object
   domain.User:
     properties:

@@ -182,7 +182,7 @@ func (s *PersonService) UpdatePerson(
 		return nil, err
 	}
 
-	personReq := domain.UpdatePersonRequest{Role: req.Role}
+	personReq := domain.UpdatePersonRequest{Role: req.Role, Status: req.Status}
 	if req.FirstName != nil || req.LastName != nil {
 		name := buildPersonName(req.FirstName, req.LastName)
 		personReq.Name = &name

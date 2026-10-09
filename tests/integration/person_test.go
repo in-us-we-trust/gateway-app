@@ -532,6 +532,7 @@ func TestUpdatePerson_UpdatesPersonAndContact(t *testing.T) {
 		var req domain.UpdatePersonRequest
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
 		assert.Equal(t, newFirstName, *req.Name)
+		assert.Nil(t, req.Status)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -581,6 +582,115 @@ func TestUpdatePerson_UpdatesPersonAndContact(t *testing.T) {
 
 	contact := data["contact"].(map[string]interface{})
 	assert.Equal(t, newEmail, contact["email"])
+}
+
+func TestUpdatePerson_StatusForwardedOnlyToDetectiveManager(t *testing.T) {
+	status := "KNOWN"
+	newEmail := "updated@example.com"
+
+	detectiveMux := http.NewServeMux()
+	detectiveMux.HandleFunc(fmt.Sprintf("/v1/devices/%s/persons/%s", testDeviceID, testPersonID), func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPatch, r.Method)
+
+		var req domain.UpdatePersonRequest
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
+		require.NotNil(t, req.Status)
+		assert.Equal(t, status, *req.Status)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(encodeStdResponse(t, testPerson))
+	})
+
+	usersMux := usersMuxWithDevice(t)
+	usersMux.HandleFunc(contactEndpoint(testPersonID), func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPatch, r.Method)
+
+		var raw map[string]interface{}
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&raw))
+		_, hasStatus := raw["status"]
+		assert.False(t, hasStatus)
+		assert.Equal(t, newEmail, raw["email"])
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(testPersonContact)
+	})
+
+	usersSrv := newUsersMock(t, usersMux)
+	detectiveSrv := newDetectiveMock(t, detectiveMux)
+
+	router := setupPersonRouter(usersSrv.URL, detectiveSrv.URL)
+
+	reqBody, _ := json.Marshal(domain.UpdatePersonWithContactRequest{
+		Status: &status,
+		Contact: &domain.ContactUpdateInput{
+			Email: &newEmail,
+		},
+	})
+	req := httptest.NewRequest(http.MethodPatch, "/api/v1/me/device/persons/"+testPersonID, bytes.NewBuffer(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestUpdatePerson_RejectedStatusForwardedOnlyToDetectiveManager(t *testing.T) {
+	status := "REJECTED"
+
+	detectiveMux := http.NewServeMux()
+	detectiveMux.HandleFunc(fmt.Sprintf("/v1/devices/%s/persons/%s", testDeviceID, testPersonID), func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPatch, r.Method)
+
+		var req domain.UpdatePersonRequest
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
+		require.NotNil(t, req.Status)
+		assert.Equal(t, status, *req.Status)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(encodeStdResponse(t, testPerson))
+	})
+
+	usersMux := usersMuxWithDevice(t)
+	usersMux.HandleFunc(contactEndpoint(testPersonID), func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(testPersonContact)
+	})
+
+	usersSrv := newUsersMock(t, usersMux)
+	detectiveSrv := newDetectiveMock(t, detectiveMux)
+
+	router := setupPersonRouter(usersSrv.URL, detectiveSrv.URL)
+
+	reqBody, _ := json.Marshal(domain.UpdatePersonWithContactRequest{Status: &status})
+	req := httptest.NewRequest(http.MethodPatch, "/api/v1/me/device/persons/"+testPersonID, bytes.NewBuffer(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestUpdatePerson_InvalidStatus_ReturnsBadRequest(t *testing.T) {
+	router := setupPersonRouter("http://unused", "http://unused")
+
+	reqBody := []byte(`{"status":"UNKNOWN"}`)
+	req := httptest.NewRequest(http.MethodPatch, "/api/v1/me/device/persons/"+testPersonID, bytes.NewBuffer(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", buildBearerToken(t, testUserID))
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
 func TestUpdatePerson_InvalidBody_ReturnsBadRequest(t *testing.T) {
